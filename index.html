@@ -439,13 +439,13 @@
     </div>
 
     <div class="field">
-        <label id="lblA" for="selA">Who paid</label>
-        <select id="selA"></select>
+        <label id="lblA">Who paid</label>
+        <div class="chips" id="pickA"></div>
     </div>
 
     <div class="field" id="fieldB" hidden>
-        <label id="lblB" for="selB">To</label>
-        <select id="selB"></select>
+        <label id="lblB">To</label>
+        <div class="chips" id="pickB"></div>
     </div>
 
     <div class="field" id="fieldSplit">
@@ -501,6 +501,7 @@ const HINTS = {
 
 let state = { cur: '₹', players: [], entries: [], seq: 0 };
 let mode = 'expense';
+let pickA = '', pickB = '';
 let openDrawer = null;
 let derived = null;
 
@@ -746,14 +747,39 @@ function renderPlayers() {
                 ${esc(p)}<span class="chip-x">✕</span>
             </button>`).join('');
 
-    const opts = state.players.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-    $('selA').innerHTML = opts;
-    $('selB').innerHTML = opts;
+    renderPicks();
 
     $('splitChips').innerHTML = state.players.length === 0
         ? `<span style="font-size:13px;color:var(--text-muted)">Add players first.</span>`
         : state.players.map(p => `
             <button class="chip" data-split="${esc(p)}" aria-pressed="true">${esc(p)}</button>`).join('');
+}
+
+// Person pickers are chip rows, not dropdowns
+function renderPicks() {
+    [['pickA', 'A'], ['pickB', 'B']].forEach(([id, slot]) => {
+        const el = $(id);
+
+        // drop a selection whose player is gone
+        if (slot === 'A' && pickA && !state.players.includes(pickA)) pickA = '';
+        if (slot === 'B' && pickB && !state.players.includes(pickB)) pickB = '';
+        const cur = slot === 'A' ? pickA : pickB;
+
+        el.innerHTML = state.players.length === 0
+            ? `<span style="font-size:13px;color:var(--text-muted)">Add players first.</span>`
+            : state.players.map(p => `
+                <button class="chip" data-pick="${slot}" data-name="${esc(p)}" aria-pressed="${cur === p}">${esc(p)}</button>`).join('');
+    });
+}
+
+function onPickClick(e) {
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    const name = b.dataset.name;
+    // tapping the selected chip again clears it
+    if (b.dataset.pick === 'A') pickA = (pickA === name) ? '' : name;
+    else                        pickB = (pickB === name) ? '' : name;
+    renderPicks();
 }
 
 function renderEntries() {
@@ -860,8 +886,8 @@ function dropPlayer(name) {
 function addEntry() {
     clearErr('eErr');
     const amount = parseFloat($('amt').value);
-    const from = $('selA').value;
-    const to = $('selB').value;
+    const from = pickA;
+    const to = pickB;
     const typed = $('desc').value.trim();
 
     if (state.players.length < 2) return showErr('eErr', 'Add at least two players first.');
@@ -964,6 +990,9 @@ $('playerChips').addEventListener('click', e => {
     const b = e.target.closest('[data-drop]');
     if (b) dropPlayer(b.dataset.drop);
 });
+
+$('pickA').addEventListener('click', onPickClick);
+$('pickB').addEventListener('click', onPickClick);
 
 $('splitChips').addEventListener('click', e => {
     const b = e.target.closest('[data-split]');
