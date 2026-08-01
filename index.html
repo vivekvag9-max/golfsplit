@@ -167,7 +167,7 @@
             margin-bottom: 12px;
         }
 
-        .pick {
+        .pick, .preset {
             padding: 7px 13px;
             font-size: 13px; font-weight: 600;
             background: #eee; color: #555;
@@ -175,9 +175,13 @@
             cursor: pointer;
         }
 
-        .pick[aria-pressed="true"] {
+        .pick[aria-pressed="true"],
+        .preset[aria-pressed="true"] {
             background: var(--green); color: white; border-color: var(--green);
         }
+
+        /* presets are a shortcut, not a required choice — read one step quieter */
+        .preset { background: #f5f5f5; }
 
         .pick-empty { font-size: 12px; color: #888; }
 
@@ -443,8 +447,17 @@
 
         <div>
             <div id="fieldsExpense">
+                <div class="pick-label">What was it for?</div>
+                <div class="pick-row" id="typePick">
+                    <button type="button" class="preset" data-desc="Booking" aria-pressed="false">Booking</button>
+                    <button type="button" class="preset" data-desc="Pro shop" aria-pressed="false">Pro shop</button>
+                    <button type="button" class="preset" data-desc="Cart/caddy" aria-pressed="false">Cart/caddy</button>
+                    <button type="button" class="preset" data-desc="Food" aria-pressed="false">Food</button>
+                    <button type="button" class="preset" data-desc="Caddy tip" aria-pressed="false">Caddy tip</button>
+                    <button type="button" class="preset" data-desc="Misc" aria-pressed="false">Misc</button>
+                </div>
                 <div class="input-group">
-                    <input type="text" id="expenseDesc" placeholder="Description (e.g. Green Fees)" autocomplete="off">
+                    <input type="text" id="expenseDesc" placeholder="Or type your own" autocomplete="off">
                     <input type="number" id="amount" placeholder="Amount" step="0.01">
                 </div>
                 <div class="pick-label">Who paid?</div>
@@ -567,6 +580,24 @@
         ['cashGiverPick', 'cashGiver'],
         ['cashReceiverPick', 'cashReceiver']
     ];
+
+    // Preset expense types. Tapping one fills the description box; typing
+    // still works, and a typed match lights the matching chip.
+    function syncPresets() {
+        const typed = (document.getElementById('expenseDesc').value || '').trim().toLowerCase();
+        document.querySelectorAll('#typePick .preset').forEach(b => {
+            b.setAttribute('aria-pressed', String(b.dataset.desc.toLowerCase() === typed));
+        });
+    }
+
+    document.addEventListener('click', e => {
+        const b = e.target.closest('.preset');
+        if (!b) return;
+        const input = document.getElementById('expenseDesc');
+        // tapping the lit chip again clears the box
+        input.value = (input.value.trim() === b.dataset.desc) ? '' : b.dataset.desc;
+        syncPresets();
+    });
 
     function renderPickers() {
         PICKERS.forEach(([id, key]) => {
@@ -824,6 +855,7 @@
 
             document.getElementById('amount').value = '';
             document.getElementById('expenseDesc').value = '';
+            syncPresets();
 
         } else if (currentMode === 'bet') {
             const desc = document.getElementById('betDesc').value.trim() || 'Bet';
@@ -1469,6 +1501,7 @@
         document.getElementById('graphicPreview').style.display = 'none';
 
         Object.keys(picks).forEach(k => picks[k] = '');
+        syncPresets();
 
         setMode('expense');
         updatePlayerUI();
@@ -1478,7 +1511,9 @@
     }
 
     setMode('expense');
+    document.getElementById('expenseDesc').addEventListener('input', syncPresets);
     restore();
+    syncPresets();
 </script>
 
 </body>
