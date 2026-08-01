@@ -1,1094 +1,1484 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caddie — live round settler</title>
-<style>
-    :root {
-        color-scheme: light;
-        --surface-0: #f2f1ee;
-        --surface-1: #fcfcfb;
-        --surface-2: #ffffff;
-        --line:      #e4e3de;
-        --line-soft: #efeeea;
-        --text-primary:   #0b0b0b;
-        --text-secondary: #52514e;
-        --text-muted:     #86847e;
-        --ink:       #1f2421;
-        --accent:    #1b5e20;
-        /* Diverging pair: blue (is owed) <-> red (owes), gray midpoint. Validated. */
-        --pos:       #2a78d6;
-        --neg:       #e34948;
-        --neutral:   #f0efec;
-        --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
-    }
-
-    @media (prefers-color-scheme: dark) {
-        :root:where(:not([data-theme="light"])) {
-            color-scheme: dark;
-            --surface-0: #121211;
-            --surface-1: #1a1a19;
-            --surface-2: #232322;
-            --line:      #35352f;
-            --line-soft: #2a2a27;
-            --text-primary:   #ffffff;
-            --text-secondary: #c3c2b7;
-            --text-muted:     #8f8e88;
-            --ink:       #e9e8e2;
-            --accent:    #7bbf7f;
-            --pos:       #3987e5;
-            --neg:       #e66767;
-            --neutral:   #383835;
-            --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf Settler</title>
+    <style>
+        :root {
+            --green: #2e7d32;
+            --green-dark: #1b5e20;
+            --green-light: #e8f5e9;
+            --green-line: #c8e6c9;
+            --red: #c62828;
+            --red-light: #ffebee;
+            --amber: #ef6c00;
+            --blue: #0277bd;
+            --wa: #25D366;
+            --ink: #1f2421;
+            --muted: #6b7280;
         }
-    }
 
-    :root[data-theme="dark"] {
-        color-scheme: dark;
-        --surface-0: #121211;
-        --surface-1: #1a1a19;
-        --surface-2: #232322;
-        --line:      #35352f;
-        --line-soft: #2a2a27;
-        --text-primary:   #ffffff;
-        --text-secondary: #c3c2b7;
-        --text-muted:     #8f8e88;
-        --ink:       #e9e8e2;
-        --accent:    #7bbf7f;
-        --pos:       #3987e5;
-        --neg:       #e66767;
-        --neutral:   #383835;
-        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
-    }
+        * { box-sizing: border-box; }
 
-    * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 15px;
+            color: var(--ink);
+        }
 
-    body {
-        margin: 0;
-        padding: 0 0 60px 0;
-        background: var(--surface-0);
-        color: var(--text-primary);
-        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 15px;
-        line-height: 1.45;
-        -webkit-text-size-adjust: 100%;
-    }
+        .container {
+            max-width: 520px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
 
-    .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
 
-    /* ---------- header ---------- */
-    header {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 12px; margin-bottom: 16px;
-    }
+        h1 { color: var(--green); margin: 0; font-size: 1.5rem; }
 
-    .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
-    .wordmark .flag { color: var(--accent); }
-    .wordmark small {
-        display: block; font-size: 11.5px; font-weight: 500;
-        color: var(--text-muted); letter-spacing: 0; margin-top: 1px;
-    }
+        .currency-picker {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+        }
 
-    .header-tools { display: flex; align-items: center; gap: 6px; }
+        .currency-picker input {
+            width: 48px;
+            padding: 6px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
 
-    .cur-input {
-        width: 52px; padding: 7px 4px; text-align: center;
-        font: inherit; font-weight: 700; font-size: 15px;
-        background: var(--surface-2); color: var(--text-primary);
-        border: 1px solid var(--line); border-radius: 8px;
-    }
+        .section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
 
-    .icon-btn {
-        width: 36px; height: 36px; padding: 0;
-        display: grid; place-items: center;
-        background: var(--surface-2); color: var(--text-secondary);
-        border: 1px solid var(--line); border-radius: 8px;
-        cursor: pointer; font-size: 15px;
-    }
+        h3 {
+            color: var(--green-dark);
+            font-size: 0.95rem;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-    .icon-btn:hover { color: var(--text-primary); }
+        .input-group { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 
-    /* ---------- cards ---------- */
-    .card {
-        background: var(--surface-1);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 14px;
-        box-shadow: var(--shadow);
-    }
+        input[type="text"], input[type="number"], select {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px !important;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            appearance: none;
+        }
 
-    .card-title {
-        font-size: 11px; font-weight: 700; letter-spacing: .07em;
-        text-transform: uppercase; color: var(--text-muted);
-        margin: 0 0 12px 0;
-    }
+        input[type="text"] { flex: 2; min-width: 130px; }
+        input[type="number"] { flex: 1; min-width: 90px; }
+        select { width: 100%; background: white; }
 
-    .empty {
-        color: var(--text-muted); font-size: 14px;
-        text-align: center; padding: 18px 8px; line-height: 1.6;
-    }
+        input[type="checkbox"] {
+            width: 20px; height: 20px;
+            accent-color: var(--green);
+            cursor: pointer; margin: 0;
+        }
 
-    /* ---------- standing list ---------- */
-    .stand-row {
-        display: flex; align-items: center; gap: 10px;
-        padding: 10px 8px;
-        border-bottom: 1px solid var(--line-soft);
-        cursor: pointer; border-radius: 8px;
-    }
+        button {
+            background-color: var(--green);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            transition: background 0.2s;
+        }
 
-    .stand-row:last-of-type { border-bottom: none; }
-    .stand-row:hover { background: var(--line-soft); }
+        button:active { background-color: var(--green-dark); }
 
-    .stand-name {
-        font-size: 14.5px; font-weight: 600; flex: 1;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+        .type-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
 
-    .pill {
-        font-size: 11px; font-weight: 700; letter-spacing: .03em;
-        text-transform: uppercase;
-        padding: 3px 8px; border-radius: 20px; white-space: nowrap;
-        color: #fff;
-    }
+        .type-tab {
+            flex: 1; padding: 8px; font-size: 12px;
+            background: #eee; color: #555;
+            border-radius: 6px; text-align: center;
+            cursor: pointer; font-weight: bold;
+            border: 1px solid #ddd;
+        }
 
-    .pill.pos { background: var(--pos); }
-    .pill.neg { background: var(--neg); }
-    .pill.zero { background: var(--neutral); color: var(--text-secondary); }
+        .type-tab.active { background: var(--green); color: white; border-color: var(--green); }
 
-    .stand-amt {
-        font-size: 15px; font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap; text-align: right;
-        min-width: 96px;
-    }
+        /* Explains what each entry type means before you use it */
+        .mode-hint {
+            font-size: 12.5px;
+            color: var(--muted);
+            background: #fafafa;
+            border-left: 3px solid var(--green-line);
+            padding: 8px 10px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 12px;
+            line-height: 1.45;
+        }
 
-    .stand-amt.is-zero { color: var(--text-muted); font-weight: 600; }
+        .btn-main { width: 100%; background: var(--green-dark); font-size: 17px; padding: 15px; margin-top: 10px; }
+        .btn-whatsapp { background-color: var(--wa); width: 100%; margin-top: 10px; }
+        .btn-graphic { background-color: var(--blue); width: 100%; margin-top: 8px; }
+        .btn-reset { background: transparent; color: #777; border: 1px solid #ccc; width: 100%; margin-top: 15px; }
 
-    .chart-foot {
-        font-size: 12px; color: var(--text-muted);
-        margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft);
-        line-height: 1.5;
-    }
+        .player-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--green-light); color: var(--green-dark);
+            padding: 6px 12px; border-radius: 20px;
+            margin: 4px; font-size: 14px; font-weight: 600;
+        }
 
-    /* breakdown drawer, opened by clicking a bar */
-    .drawer {
-        grid-column: 1 / -1;
-        margin: 2px 0 8px 0;
-        padding: 10px 12px;
-        background: var(--surface-2);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-    }
+        .delete-btn {
+            background: none; border: none; color: var(--red);
+            font-weight: bold; padding: 0 2px; cursor: pointer; font-size: 14px;
+        }
 
-    .bd-row {
-        display: flex; justify-content: space-between; gap: 12px;
-        font-size: 13px; padding: 4px 0;
-        border-bottom: 1px dashed var(--line-soft);
-    }
-    .bd-row:last-child { border-bottom: none; }
-    .bd-row.total {
-        border-top: 1.5px solid var(--line); border-bottom: none;
-        margin-top: 3px; padding-top: 7px; font-weight: 700;
-    }
-    .bd-label { color: var(--text-secondary); }
-    .bd-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
-    .bd-row.total .bd-label { color: var(--text-primary); }
+        /* Person pickers: small tabs instead of a dropdown */
+        .pick-label {
+            font-size: 13px; font-weight: bold; color: #555;
+            margin-bottom: 6px;
+        }
 
-    .drawer-action {
-        font-size: 12.5px; color: var(--text-secondary);
-        margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft);
-    }
-    .drawer-action b { color: var(--text-primary); }
+        .pick-row {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            margin-bottom: 12px;
+        }
 
-    /* ---------- plan ---------- */
-    .plan-head {
-        font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
-        margin-bottom: 10px;
-    }
+        .pick {
+            padding: 7px 13px;
+            font-size: 13px; font-weight: 600;
+            background: #eee; color: #555;
+            border: 1px solid #ddd; border-radius: 20px;
+            cursor: pointer;
+        }
 
-    .pay {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 10px; padding: 11px 12px;
-        background: var(--surface-2);
-        border: 1px solid var(--line);
-        border-radius: 10px; margin-bottom: 7px;
-    }
+        .pick[aria-pressed="true"] {
+            background: var(--green); color: white; border-color: var(--green);
+        }
 
-    .pay-who { font-size: 14.5px; }
-    .pay-who b { font-weight: 700; }
-    .pay-who .arr { color: var(--text-muted); margin: 0 5px; }
-    .pay-amt { font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .pick-empty { font-size: 12px; color: #888; }
 
-    .square {
-        text-align: center; padding: 16px;
-        background: var(--surface-2); border: 1px solid var(--line);
-        border-radius: 10px; font-weight: 600;
-    }
+        .checkbox-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin: 8px 0 15px 0; background: #fafafa;
+            padding: 10px; border-radius: 8px;
+        }
 
-    /* ---------- composer ---------- */
-    .seg {
-        display: flex; gap: 4px; padding: 4px;
-        background: var(--surface-0); border: 1px solid var(--line);
-        border-radius: 10px; margin-bottom: 12px;
-    }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; user-select: none; }
+        .checkbox-item label { cursor: pointer; width: 100%; }
 
-    .seg button {
-        flex: 1; padding: 8px 4px;
-        font: inherit; font-size: 12.5px; font-weight: 600;
-        background: transparent; color: var(--text-secondary);
-        border: none; border-radius: 7px; cursor: pointer;
-    }
+        .expense-card {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #f9f9f9; padding: 10px 12px; border-radius: 8px;
+            margin-bottom: 6px; font-size: 14px;
+            border-left: 4px solid var(--green);
+        }
 
-    .seg button[aria-selected="true"] {
-        background: var(--surface-2); color: var(--text-primary);
-        box-shadow: 0 1px 2px rgba(0,0,0,.08);
-    }
+        .expense-card.bet { border-left-color: var(--amber); }
+        .expense-card.cash { border-left-color: var(--blue); }
 
-    .hint { font-size: 12.5px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.5; }
+        .error-msg { color: var(--red); font-size: 13px; margin-top: 5px; display: none; }
 
-    .field { margin-bottom: 10px; }
-    .field label {
-        display: block; font-size: 11.5px; font-weight: 600;
-        color: var(--text-secondary); margin-bottom: 4px;
-    }
+        /* ---------- RESULTS ---------- */
+        #results { display: none; margin-top: 22px; }
 
-    .row2 { display: flex; gap: 8px; }
-    .row2 > * { flex: 1; min-width: 0; }
+        .result-block { margin-bottom: 22px; }
 
-    input[type="text"], input[type="number"], select {
-        width: 100%; padding: 11px 12px;
-        font: inherit; font-size: 16px;
-        background: var(--surface-2); color: var(--text-primary);
-        border: 1px solid var(--line); border-radius: 9px;
-        -webkit-appearance: none; appearance: none;
-    }
+        .block-title {
+            font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.6px;
+            color: var(--muted); font-weight: 700; margin-bottom: 8px;
+        }
 
-    select {
-        background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
-                          linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
-        background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
-        background-size: 5px 5px, 5px 5px;
-        background-repeat: no-repeat;
-        padding-right: 32px;
-    }
+        /* The headline answer */
+        .verdict {
+            background: var(--green-dark);
+            color: white;
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+        }
 
-    input:focus, select:focus { outline: 2px solid var(--pos); outline-offset: 1px; }
+        .verdict-main { font-size: 19px; font-weight: 700; line-height: 1.3; }
+        .verdict-sub { font-size: 13px; opacity: 0.85; margin-top: 4px; line-height: 1.4; }
 
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .payment {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; background: white;
+            border: 1px solid var(--green-line);
+            border-left: 4px solid var(--green);
+            border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+        }
 
-    .chip {
-        padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600;
-        background: var(--surface-2); color: var(--text-secondary);
-        border: 1px solid var(--line); border-radius: 20px; cursor: pointer;
-    }
+        .pay-people { font-size: 15px; line-height: 1.4; }
+        .pay-people .name { font-weight: 700; }
+        .pay-arrow { color: var(--muted); margin: 0 6px; font-weight: 600; font-size: 13px; }
+        .pay-amt { font-size: 17px; font-weight: 800; color: var(--green-dark); white-space: nowrap; }
 
-    .chip[aria-pressed="true"] {
-        background: var(--ink); color: var(--surface-1); border-color: var(--ink);
-    }
+        .all-square {
+            background: var(--green-light); border: 1px solid var(--green-line);
+            border-radius: 10px; padding: 16px; text-align: center;
+            font-weight: 700; color: var(--green-dark);
+        }
 
-    .chip-x { margin-left: 5px; opacity: .55; }
+        /* Per-player card */
+        .player-card {
+            background: white; border: 1px solid #e5e7eb;
+            border-radius: 12px; padding: 14px; margin-bottom: 10px;
+        }
 
-    .split-head {
-        display: flex; justify-content: space-between; align-items: baseline;
-        margin-bottom: 5px;
-    }
+        .player-card.is-get { border-left: 4px solid var(--green); }
+        .player-card.is-pay { border-left: 4px solid var(--red); }
+        .player-card.is-even { border-left: 4px solid #cbd5e1; }
 
-    .linkbtn {
-        background: none; border: none; padding: 0; cursor: pointer;
-        font: inherit; font-size: 11.5px; font-weight: 600;
-        color: var(--pos); text-decoration: underline;
-    }
+        .pc-head {
+            display: flex; justify-content: space-between; align-items: baseline;
+            gap: 10px; margin-bottom: 4px;
+        }
 
-    .btn {
-        width: 100%; padding: 13px;
-        font: inherit; font-size: 15px; font-weight: 700;
-        background: var(--ink); color: var(--surface-1);
-        border: none; border-radius: 10px; cursor: pointer;
-    }
+        .pc-name { font-size: 16px; font-weight: 700; }
 
-    .btn:active { opacity: .85; }
-    .btn.ghost {
-        background: transparent; color: var(--text-secondary);
-        border: 1px solid var(--line); font-weight: 600;
-    }
+        .pc-verdict { font-size: 15px; font-weight: 800; white-space: nowrap; }
+        .pc-verdict.get { color: var(--green); }
+        .pc-verdict.pay { color: var(--red); }
+        .pc-verdict.even { color: var(--muted); }
 
-    .btn-row { display: flex; gap: 8px; }
+        .pc-action {
+            font-size: 13px; color: #374151; line-height: 1.5;
+            background: #f9fafb; border-radius: 8px;
+            padding: 8px 10px; margin: 8px 0 4px 0;
+        }
 
-    .err {
-        color: var(--neg); font-size: 12.5px; margin-top: 8px; display: none;
-    }
+        .pc-action b { color: var(--ink); }
 
-    /* ---------- entries ---------- */
-    .entry {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 10px; padding: 10px 0;
-        border-bottom: 1px solid var(--line-soft);
-        font-size: 13.5px;
-    }
-    .entry:last-child { border-bottom: none; }
-    .entry-main b { font-weight: 700; }
-    .entry-sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
-    .entry-amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* The "why" — every line signed, ending in the net */
+        .breakdown { margin-top: 8px; }
 
-    .del {
-        background: none; border: none; cursor: pointer;
-        color: var(--text-muted); font-size: 15px; padding: 0 2px; line-height: 1;
-    }
-    .del:hover { color: var(--neg); }
+        .bd-row {
+            display: flex; justify-content: space-between; gap: 12px;
+            font-size: 13px; padding: 5px 0;
+            border-bottom: 1px dashed #eef0f2;
+        }
 
-    /* ---------- share ---------- */
-    .share-preview {
-        background: var(--surface-2);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 12px 14px;
-        font-size: 12.5px;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 260px;
-        overflow-y: auto;
-        color: var(--text-secondary);
-        margin-bottom: 10px;
-    }
+        .bd-row .bd-label { color: #4b5563; }
+        .bd-row .bd-val { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+        .bd-row.total {
+            border-bottom: none; border-top: 2px solid #e5e7eb;
+            margin-top: 4px; padding-top: 8px; font-size: 14px;
+        }
+        .bd-row.total .bd-label { font-weight: 700; color: var(--ink); }
 
-    .share-preview b { color: var(--text-primary); font-weight: 700; }
+        .plus { color: var(--green); }
+        .minus { color: var(--red); }
+        .zero { color: var(--muted); }
 
-    .opt {
-        display: flex; align-items: center; gap: 8px;
-        font-size: 13px; color: var(--text-secondary);
-        margin-bottom: 12px; cursor: pointer; user-select: none;
-    }
+        details.detail-box {
+            background: #fafafa; border: 1px solid #e5e7eb;
+            border-radius: 10px; padding: 0; margin-top: 6px;
+        }
 
-    .opt input { width: 17px; height: 17px; accent-color: var(--pos); cursor: pointer; }
+        details.detail-box > summary {
+            cursor: pointer; padding: 12px 14px;
+            font-size: 13.5px; font-weight: 700; color: var(--green-dark);
+            list-style: none; user-select: none;
+        }
 
-    .btn.wa { background: #25D366; color: #05231a; }
+        details.detail-box > summary::-webkit-details-marker { display: none; }
+        details.detail-box > summary::before { content: "▸ "; color: var(--muted); }
+        details.detail-box[open] > summary::before { content: "▾ "; }
 
-    .toast {
-        position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(8px);
-        background: var(--ink); color: var(--surface-1);
-        padding: 10px 16px; border-radius: 999px;
-        font-size: 13.5px; font-weight: 600;
-        opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
-        z-index: 60;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .detail-body { padding: 0 14px 14px 14px; }
 
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-</style>
+        .note {
+            font-size: 12.5px; color: var(--muted);
+            line-height: 1.5; margin: 0 0 10px 0;
+        }
+
+        .table-responsive {
+            overflow-x: auto; margin: 8px 0 14px 0;
+            background: white; border-radius: 8px; border: 1px solid #e5e7eb;
+        }
+
+        /* Spreadsheet-style grid */
+        .grid-table {
+            border-collapse: collapse;
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            min-width: 100%;
+        }
+
+        .grid-table th, .grid-table td {
+            padding: 7px 9px;
+            border: 1px solid #e8eaed;
+            text-align: right;
+        }
+
+        .grid-table thead th {
+            background: var(--green);
+            color: white;
+            font-weight: 700;
+            position: sticky; top: 0;
+        }
+
+        .grid-table .item {
+            text-align: left;
+            position: sticky; left: 0; z-index: 2;
+            background: white;
+            font-weight: 600;
+            padding: 6px 9px;
+            box-shadow: 1px 0 0 #e0e0e0;
+        }
+
+        .grid-table thead .item { background: var(--green-dark); z-index: 3; }
+
+        /* fixed-width inner box so long descriptions ellipsis instead of wrapping */
+        .grid-table .item-in {
+            width: 132px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grid-table .item small {
+            display: block;
+            font-weight: 400;
+            color: var(--muted);
+            font-size: 10.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .grid-table .amt-in  { color: var(--green); }
+        .grid-table .amt-out { color: var(--red); }
+        .grid-table .amt-nil { color: #cbd5e1; }
+
+        .grid-table .col-total { background: #fafafa; font-weight: 700; }
+
+        .grid-table tr.net-row td,
+        .grid-table tr.net-row th {
+            border-top: 2px solid var(--green);
+            background: var(--green-light);
+            font-weight: 800;
+            font-size: 12.5px;
+        }
+
+        .grid-table tr.net-row .item { background: var(--green-light); }
+
+        .cross-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
+        .cross-table th, .cross-table td { padding: 8px 6px; border: 1px solid #e8eaed; white-space: nowrap; }
+        .cross-table th { background-color: var(--green); color: white; font-weight: bold; }
+        .cross-table th.corner { background-color: var(--green-dark); font-size: 10.5px; font-weight: 600; }
+        .cross-table td.self-cell { background-color: #f3f4f6; color: #bbb; }
+        .cross-table td.owed { background: #fff7ed; color: var(--amber); font-weight: 700; }
+        .cross-table td.nil { color: #cbd5e1; }
+        .cross-table td.positive { color: var(--green); font-weight: bold; }
+        .cross-table td.negative { color: var(--red); font-weight: bold; }
+
+        .direct-line {
+            font-size: 13px; padding: 6px 0;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+        .direct-line:last-child { border-bottom: none; }
+
+        #graphicPreview { display: none; margin-top: 15px; text-align: center; }
+        #graphicPreview img { max-width: 100%; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+    </style>
 </head>
 <body>
 
-<div class="wrap">
-
-<header>
-    <div class="wordmark">
-        <span class="flag">⛳</span> Caddie
-        <small>Live round settler</small>
-    </div>
-    <div class="header-tools">
-        <input class="cur-input" id="cur" value="₹" maxlength="3" aria-label="Currency symbol">
-        <button class="icon-btn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light or dark theme">◐</button>
-    </div>
-</header>
-
-<!-- THE STANDING — always on screen, always current -->
-<section class="card">
-    <h2 class="card-title">Where everyone stands</h2>
-    <div id="standing"></div>
-</section>
-
-<!-- THE PLAN -->
-<section class="card">
-    <h2 class="card-title">Settling up</h2>
-    <div id="plan"></div>
-</section>
-
-<!-- PLAYERS -->
-<section class="card">
-    <h2 class="card-title">Players</h2>
-    <div class="field">
-        <div class="row2">
-            <input type="text" id="pname" placeholder="Names, comma separated" autocomplete="off">
-            <button class="btn" style="flex:0 0 84px" id="addPlayerBtn">Add</button>
-        </div>
-    </div>
-    <div class="chips" id="playerChips"></div>
-    <div class="err" id="pErr"></div>
-</section>
-
-<!-- COMPOSER -->
-<section class="card">
-    <h2 class="card-title">Add to the round</h2>
-
-    <div class="seg" role="tablist">
-        <button role="tab" data-mode="expense" aria-selected="true">🛒 Expense</button>
-        <button role="tab" data-mode="bet" aria-selected="false">🎯 Bet</button>
-        <button role="tab" data-mode="cash" aria-selected="false">💵 Paid back</button>
-    </div>
-
-    <p class="hint" id="hint"></p>
-
-    <div class="field">
-        <div class="row2">
-            <input type="text" id="desc" placeholder="What for?" autocomplete="off">
-            <input type="number" id="amt" placeholder="Amount" step="0.01" inputmode="decimal">
+<div class="container">
+    <div class="header-bar">
+        <h1>⛳ Golf Settler</h1>
+        <div class="currency-picker">
+            <span>Currency:</span>
+            <input type="text" id="currencySymbol" value="₹" maxlength="5" onchange="updateCurrency()">
         </div>
     </div>
 
-    <div class="field">
-        <label id="lblA">Who paid</label>
-        <div class="chips" id="pickA"></div>
-    </div>
-
-    <div class="field" id="fieldB" hidden>
-        <label id="lblB">To</label>
-        <div class="chips" id="pickB"></div>
-    </div>
-
-    <div class="field" id="fieldSplit">
-        <div class="split-head">
-            <label style="margin:0">Covers</label>
-            <button class="linkbtn" id="allNoneBtn" type="button">select none</button>
+    <!-- Step 1: Players -->
+    <div class="section">
+        <h3>1. Add Players (Single or Comma Separated)</h3>
+        <div class="input-group">
+            <input type="text" id="playerName" placeholder="Names (e.g. Alex, Bob, Charlie)" autocomplete="off" onkeydown="if(event.key==='Enter'||event.keyCode===13){addPlayers();}">
+            <button type="button" onclick="addPlayers()">Add</button>
         </div>
-        <div class="chips" id="splitChips"></div>
+        <div id="playerError" class="error-msg"></div>
+        <div id="playerList" style="margin-top: 8px;"></div>
     </div>
 
-    <button class="btn" id="addEntryBtn">Add to round</button>
-    <div class="err" id="eErr"></div>
-</section>
+    <!-- Step 2: Entries -->
+    <div class="section">
+        <h3>2. Add Expense / Bet / Cash</h3>
 
-<!-- ENTRIES -->
-<section class="card" id="entriesCard" hidden>
-    <h2 class="card-title">The round so far</h2>
-    <div id="entries"></div>
-</section>
+        <div class="type-tabs">
+            <div class="type-tab active" id="tabExpense" onclick="setMode('expense')">🛒 Shared Expense</div>
+            <div class="type-tab" id="tabBet" onclick="setMode('bet')">🎯 Bet</div>
+            <div class="type-tab" id="tabCash" onclick="setMode('cash')">💵 Cash Handed Over</div>
+        </div>
 
-<!-- SHARE — the end of the flow -->
-<section class="card" id="shareCard">
-    <h2 class="card-title">Share the result</h2>
+        <div class="mode-hint" id="modeHint"></div>
 
-    <label class="opt">
-        <input type="checkbox" id="optWhy" checked>
-        Include how each number was worked out
-    </label>
+        <div>
+            <div id="fieldsExpense">
+                <div class="input-group">
+                    <input type="text" id="expenseDesc" placeholder="Description (e.g. Green Fees)" autocomplete="off">
+                    <input type="number" id="amount" placeholder="Amount" step="0.01">
+                </div>
+                <div class="pick-label">Who paid?</div>
+                <div class="pick-row" id="payerPick"></div>
+                <div style="font-size: 13px; font-weight: bold; color: #555;">Split Between:</div>
+                <div id="splitCheckboxes" class="checkbox-grid">
+                    <div style="font-size: 12px; color: #888;">Add players above first</div>
+                </div>
+            </div>
 
-    <div class="share-preview" id="sharePreview"></div>
+            <div id="fieldsBet" style="display: none;">
+                <div class="input-group">
+                    <input type="text" id="betDesc" placeholder="Bet Name (e.g. Skins, Hole 9)" autocomplete="off">
+                    <input type="number" id="betAmount" placeholder="Amount" step="0.01">
+                </div>
+                <div class="pick-label">Winner (gets paid)</div>
+                <div class="pick-row" id="betWinnerPick"></div>
+                <div class="pick-label">Loser (owes money)</div>
+                <div class="pick-row" id="betLoserPick"></div>
+            </div>
 
-    <button class="btn wa" id="waBtn">💬 Send to WhatsApp</button>
-    <div class="btn-row" style="margin-top:8px">
-        <button class="btn ghost" id="copyBtn">Copy text</button>
-        <button class="btn ghost" id="clearBtn">Clear round</button>
+            <div id="fieldsCash" style="display: none;">
+                <div class="input-group">
+                    <input type="text" id="cashDesc" placeholder="Note (e.g. Paid Bob back)" autocomplete="off">
+                    <input type="number" id="cashAmount" placeholder="Amount" step="0.01">
+                </div>
+                <div class="pick-label">Who handed the cash over</div>
+                <div class="pick-row" id="cashGiverPick"></div>
+                <div class="pick-label">Who received it</div>
+                <div class="pick-row" id="cashReceiverPick"></div>
+            </div>
+
+            <button type="button" style="width: 100%;" id="submitBtn" onclick="addTransaction()">Add Expense</button>
+        </div>
+        <div id="expenseError" class="error-msg"></div>
     </div>
-</section>
 
+    <!-- Step 3: Log -->
+    <div class="section" id="expenseLogSection" style="display: none;">
+        <h3>Transaction Log</h3>
+        <div id="expenseList"></div>
+    </div>
+
+    <button type="button" class="btn-main" onclick="calculateSettlement()">Settle Up!</button>
+
+    <!-- Step 4: Outcome -->
+    <div id="results">
+
+        <!-- A. The answer, first -->
+        <div class="result-block">
+            <div class="verdict">
+                <div class="verdict-main" id="verdictMain"></div>
+                <div class="verdict-sub" id="verdictSub"></div>
+            </div>
+            <div id="paymentList"></div>
+        </div>
+
+        <!-- B. Spreadsheet grid: one row per entry, one column per player -->
+        <div class="result-block">
+            <div class="block-title">Line by line</div>
+            <div class="table-responsive">
+                <table class="grid-table" id="gridTable"></table>
+            </div>
+            <p class="note" id="gridNote"></p>
+        </div>
+
+        <!-- C. Per player, with the arithmetic spelled out -->
+        <div class="result-block">
+            <div class="block-title">Where each number comes from</div>
+            <div id="playerCards"></div>
+        </div>
+
+        <!-- D. Detail, folded away -->
+        <div class="result-block">
+            <details class="detail-box">
+                <summary id="detailSummary">Show the person-to-person detail</summary>
+                <div class="detail-body">
+                    <p class="note" id="detailIntro"></p>
+                    <div id="directList"></div>
+                    <div class="table-responsive">
+                        <table class="cross-table" id="crossTable"></table>
+                    </div>
+                    <p class="note">
+                        Read a row across: that person owes each amount to the player named at the top
+                        of the column. <b>Net</b> is what they end up up or down overall — green means
+                        the group owes them, red means they owe the group.
+                    </p>
+                </div>
+            </details>
+        </div>
+
+        <button type="button" class="btn-whatsapp" onclick="shareWhatsApp()">💬 Share to WhatsApp</button>
+        <button type="button" class="btn-graphic" onclick="generateGraphic()">🖼️ Generate Summary Image Card</button>
+
+        <div id="graphicPreview">
+            <p style="font-size: 12px; color: #555; margin-bottom: 5px;">Right-click or long-press image to save:</p>
+            <img id="generatedImage" alt="Summary Graphic">
+        </div>
+    </div>
+
+    <button type="button" class="btn-reset" onclick="resetAll()">Clear & Start Over</button>
 </div>
-<div class="toast" id="toast"></div>
+
+<canvas id="exportCanvas" style="display:none;"></canvas>
 
 <script>
-"use strict";
+    const EPS = 0.005;
 
-const EPS = 0.005;
-const STORE = 'caddie-round-v1';
+    let players = [];
+    let expenses = [];
+    let currencySymbol = '₹';
+    let currentMode = 'expense';
 
-const HINTS = {
-    expense: "One person paid for the group. Tick everyone the cost covers — they each carry an equal share.",
-    bet: "A settled side bet. The loser goes down by the amount, the winner goes up by the same.",
-    cash: "Money that already changed hands — someone squaring up early. It reduces what the giver owes."
-};
+    // Who is selected in each person-picker (chip rows, not dropdowns)
+    const picks = { payer: '', betWinner: '', betLoser: '', cashGiver: '', cashReceiver: '' };
+    const PICKERS = [
+        ['payerPick', 'payer'],
+        ['betWinnerPick', 'betWinner'],
+        ['betLoserPick', 'betLoser'],
+        ['cashGiverPick', 'cashGiver'],
+        ['cashReceiverPick', 'cashReceiver']
+    ];
 
-let state = { cur: '₹', players: [], entries: [], seq: 0 };
-let mode = 'expense';
-let pickA = '', pickB = '';
-let openDrawer = null;
-let derived = null;
+    function renderPickers() {
+        PICKERS.forEach(([id, key]) => {
+            const el = document.getElementById(id);
+            if (!el) return;
 
-/* ---------------- persistence ---------------- */
-function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
-}
+            // drop a selection whose player has been removed
+            if (picks[key] && !players.includes(picks[key])) picks[key] = '';
 
-function load() {
-    try {
-        const raw = localStorage.getItem(STORE);
-        if (raw) {
-            const p = JSON.parse(raw);
-            if (p && Array.isArray(p.players) && Array.isArray(p.entries)) state = p;
-        }
-    } catch (e) {}
-
-    try {
-        const t = localStorage.getItem(STORE + '-theme');
-        if (t) document.documentElement.dataset.theme = t;
-    } catch (e) {}
-}
-
-/* ---------------- helpers ---------------- */
-const $ = id => document.getElementById(id);
-
-function money(n) {
-    return state.cur + Math.abs(n).toLocaleString(undefined,
-        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function signed(n) {
-    if (Math.abs(n) < EPS) return money(0);
-    return (n > 0 ? '+' : '−') + money(n);
-}
-
-function esc(s) {
-    return String(s).replace(/[&<>"']/g, c =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-function toast(msg) {
-    const t = $('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => t.classList.remove('show'), 1900);
-}
-
-function showErr(id, msg) {
-    const el = $(id);
-    el.textContent = msg;
-    el.style.display = 'block';
-}
-
-function clearErr(id) { $(id).style.display = 'none'; }
-
-/* ---------------- the maths ----------------
-   Every entry is "someone is up by X, someone else is down by X".
-   An expense splits the down side N ways; a bet and a payback are 1-to-1.   */
-function compute() {
-    const names = state.players;
-    const parts = {};
-    names.forEach(n => parts[n] = {
-        paid: 0, share: 0, betWon: 0, betLost: 0, gave: 0, got: 0
-    });
-
-    const owes = {};  // owes["A|B"] = gross A owes B, pre-netting
-
-    state.entries.forEach(en => {
-        const each = en.amount / en.with.length;
-
-        if (en.kind === 'expense') parts[en.from].paid += en.amount;
-        else if (en.kind === 'bet') parts[en.from].betWon += en.amount;
-        else parts[en.from].gave += en.amount;
-
-        en.with.forEach(p => {
-            if (!parts[p]) return;
-            if (en.kind === 'expense') parts[p].share += each;
-            else if (en.kind === 'bet') parts[p].betLost += each;
-            else parts[p].got += each;
-
-            if (p !== en.from) {
-                const k = p + '|' + en.from;
-                owes[k] = (owes[k] || 0) + each;
-            }
+            el.innerHTML = players.length === 0
+                ? '<span class="pick-empty">Add players above first</span>'
+                : players.map(pl => `<button type="button" class="pick" data-key="${key}" data-name="${esc(pl)}" aria-pressed="${picks[key] === pl}">${esc(pl)}</button>`).join('');
         });
-    });
-
-    const net = {};
-    names.forEach(n => {
-        const c = parts[n];
-        net[n] = c.paid - c.share + c.betWon - c.betLost + c.gave - c.got;
-        if (Math.abs(net[n]) < EPS) net[n] = 0;
-    });
-
-    // net each pair off against each other
-    const direct = [];
-    for (let i = 0; i < names.length; i++) {
-        for (let j = i + 1; j < names.length; j++) {
-            const a = names[i], b = names[j];
-            const d = (owes[a + '|' + b] || 0) - (owes[b + '|' + a] || 0);
-            if (d > EPS) direct.push({ from: a, to: b, amount: d });
-            else if (d < -EPS) direct.push({ from: b, to: a, amount: -d });
-        }
     }
 
-    // greedy: largest debtor against largest creditor
-    const down = names.filter(n => net[n] < -EPS).map(n => ({ n, v: -net[n] }))
-                      .sort((x, y) => y.v - x.v);
-    const up = names.filter(n => net[n] > EPS).map(n => ({ n, v: net[n] }))
-                    .sort((x, y) => y.v - x.v);
-
-    const plan = [];
-    let d = 0, c = 0;
-    while (d < down.length && c < up.length) {
-        const pay = Math.min(down[d].v, up[c].v);
-        plan.push({ from: down[d].n, to: up[c].n, amount: pay });
-        down[d].v -= pay;
-        up[c].v -= pay;
-        if (down[d].v < EPS) d++;
-        if (up[c].v < EPS) c++;
-    }
-
-    const moves = {};
-    names.forEach(n => moves[n] = { pays: [], gets: [] });
-    plan.forEach(t => {
-        moves[t.from].pays.push({ who: t.to, amount: t.amount });
-        moves[t.to].gets.push({ who: t.from, amount: t.amount });
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.pick');
+        if (!btn) return;
+        const key = btn.dataset.key;
+        // tapping the selected chip again clears it
+        picks[key] = (picks[key] === btn.dataset.name) ? '' : btn.dataset.name;
+        renderPickers();
     });
 
-    const rows = names.map(n => ({ name: n, net: net[n], parts: parts[n], moves: moves[n] }))
-                      .sort((a, b) => b.net - a.net);
+    // --- PERSISTENCE: the round survives a refresh or a locked phone ---
+    const STORE = 'golf-settler-v1';
 
-    return { rows, plan, direct };
-}
-
-/* ---------------- render: the standing ---------------- */
-function componentLines(p) {
-    return [
-        ['Paid for the group', p.paid],
-        ['Own share', -p.share],
-        ['Bets won', p.betWon],
-        ['Bets lost', -p.betLost],
-        ['Paid back to others', p.gave],
-        ['Received back', -p.got]
-    ].filter(r => Math.abs(r[1]) >= EPS);
-}
-
-function renderStanding() {
-    const el = $('standing');
-    const { rows } = derived;
-
-    if (state.players.length === 0) {
-        el.innerHTML = `<p class="empty">Add players below and the standing appears here —<br>updating with every entry.</p>`;
-        return;
+    function save() {
+        try {
+            localStorage.setItem(STORE, JSON.stringify({
+                players, expenses, cur: currencySymbol, seq: idCounter
+            }));
+        } catch (e) { /* private mode / quota — carry on unsaved */ }
     }
 
-    const anyMoney = rows.some(r => Math.abs(r.net) >= EPS);
-    let html = '';
+    function restore() {
+        let saved;
+        try { saved = JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return; }
+        if (!saved || !Array.isArray(saved.players) || !Array.isArray(saved.expenses)) return;
 
-    rows.forEach(r => {
-        const cls = r.net > EPS ? 'pos' : (r.net < -EPS ? 'neg' : 'zero');
-        const word = cls === 'pos' ? 'is owed' : (cls === 'neg' ? 'owes' : 'square');
+        players = saved.players;
+        expenses = saved.expenses;
+        currencySymbol = saved.cur || '₹';
+        idCounter = saved.seq || expenses.reduce((m, e) => Math.max(m, e.id || 0), 0);
 
-        html += `
-            <div class="stand-row" data-name="${esc(r.name)}" tabindex="0" role="button"
-                 aria-expanded="${openDrawer === r.name}">
-                <span class="stand-name">${esc(r.name)}</span>
-                <span class="pill ${cls}">${word}</span>
-                <span class="stand-amt ${cls === 'zero' ? 'is-zero' : ''}">${cls === 'zero' ? '—' : money(r.net)}</span>
-            </div>`;
-
-        if (openDrawer === r.name) {
-            const lines = componentLines(r.parts);
-            const act = r.moves.pays.length
-                ? 'Pays ' + r.moves.pays.map(m => `<b>${money(m.amount)}</b> to <b>${esc(m.who)}</b>`).join(' and ')
-                : (r.moves.gets.length
-                    ? 'Collects ' + r.moves.gets.map(m => `<b>${money(m.amount)}</b> from <b>${esc(m.who)}</b>`).join(' and ')
-                    : 'Nothing to do.');
-
-            html += `<div class="drawer">
-                ${lines.map(l => `
-                    <div class="bd-row">
-                        <span class="bd-label">${l[0]}</span>
-                        <span class="bd-val">${signed(l[1])}</span>
-                    </div>`).join('')
-                || '<div class="bd-row"><span class="bd-label">Nothing recorded yet</span><span class="bd-val">—</span></div>'}
-                <div class="bd-row total">
-                    <span class="bd-label">Net</span>
-                    <span class="bd-val">${signed(r.net)}</span>
-                </div>
-                <div class="drawer-action">${act}</div>
-            </div>`;
-        }
-    });
-
-    html += `<p class="chart-foot">${anyMoney
-        ? 'Tap a name to see how its number was built.'
-        : 'Nothing has moved yet — everyone is square.'}</p>`;
-
-    el.innerHTML = html;
-}
-
-/* ---------------- render: the plan ---------------- */
-function renderPlan() {
-    const el = $('plan');
-    const { plan, direct } = derived;
-
-    if (state.players.length === 0 || state.entries.length === 0) {
-        el.innerHTML = `<p class="empty">No entries yet.</p>`;
-        return;
+        document.getElementById('currencySymbol').value = currencySymbol;
+        updatePlayerUI();
+        renderExpenses();
+        if (expenses.length > 0) calculateSettlement(false);
     }
 
-    if (plan.length === 0) {
-        el.innerHTML = `<div class="square">✓ All square — nobody owes anybody</div>`;
-        return;
+    // Snapshot of the last calculation, reused by the WhatsApp and image exports
+    let last = {
+        transactions: [],
+        directDebts: [],
+        cards: [],
+        totalSpend: 0,
+        avgSpend: 0
+    };
+
+    const MODE_HINTS = {
+        expense: "Someone paid for the whole group — green fees, caddie, lunch. Pick who paid, then tick everyone whose share it covers.",
+        bet: "A side bet that's been decided. The loser's total goes down by the amount, the winner's goes up.",
+        cash: "Money that has already physically changed hands — settling up early, or covering someone at the counter. It reduces what the giver owes."
+    };
+
+    // --- FORMATTING ---
+    function money(n) {
+        const v = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return currencySymbol + v;
     }
 
-    const n = plan.length;
-    let html = `<div class="plan-head">${n} payment${n > 1 ? 's' : ''} and you're done</div>`;
-
-    html += plan.map(t => `
-        <div class="pay">
-            <div class="pay-who"><b>${esc(t.from)}</b><span class="arr">→</span><b>${esc(t.to)}</b></div>
-            <div class="pay-amt">${money(t.amount)}</div>
-        </div>`).join('');
-
-    if (direct.length > n) {
-        html += `<p class="chart-foot">Squaring up pair by pair would take ${direct.length} transfers.
-                 These ${n} move the same money with fewer hand-offs — everyone lands on the same net.</p>`;
+    function signed(n) {
+        if (Math.abs(n) < EPS) return `<span class="zero">${money(0)}</span>`;
+        return n > 0
+            ? `<span class="plus">+${money(n)}</span>`
+            : `<span class="minus">−${money(n)}</span>`;
     }
 
-    el.innerHTML = html;
-}
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
 
-/* ---------------- render: players & composer ---------------- */
-function renderPlayers() {
-    $('playerChips').innerHTML = state.players.length === 0
-        ? `<span style="font-size:13px;color:var(--text-muted)">Nobody yet.</span>`
-        : state.players.map(p => `
-            <button class="chip" data-drop="${esc(p)}" aria-pressed="false">
-                ${esc(p)}<span class="chip-x">✕</span>
-            </button>`).join('');
+    // Accounting format for grid cells: no symbol, brackets for money out.
+    function cell(n) {
+        if (Math.abs(n) < EPS) return '';
+        const v = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        return n < 0 ? `(${v})` : v;
+    }
 
-    renderPicks();
+    // One row per entry, one column per player. A cell is that player's
+    // signed effect from that entry, so every row sums to zero.
+    function buildGrid() {
+        return expenses.map(exp => {
+            const cells = players.map(() => 0);
+            const share = exp.amount / exp.splitWith.length;
 
-    $('splitChips').innerHTML = state.players.length === 0
-        ? `<span style="font-size:13px;color:var(--text-muted)">Add players first.</span>`
-        : state.players.map(p => `
-            <button class="chip" data-split="${esc(p)}" aria-pressed="true">${esc(p)}</button>`).join('');
-}
+            const payerIdx = players.indexOf(exp.payer);
+            if (payerIdx !== -1) cells[payerIdx] += exp.amount;
 
-// Person pickers are chip rows, not dropdowns
-function renderPicks() {
-    [['pickA', 'A'], ['pickB', 'B']].forEach(([id, slot]) => {
-        const el = $(id);
+            exp.splitWith.forEach(p => {
+                const i = players.indexOf(p);
+                if (i !== -1) cells[i] -= share;
+            });
 
-        // drop a selection whose player is gone
-        if (slot === 'A' && pickA && !state.players.includes(pickA)) pickA = '';
-        if (slot === 'B' && pickB && !state.players.includes(pickB)) pickB = '';
-        const cur = slot === 'A' ? pickA : pickB;
+            let label, sub;
+            if (exp.type === 'bet') {
+                label = `🎯 ${exp.description}`;
+                sub = `${exp.winner} beat ${exp.loser}`;
+            } else if (exp.type === 'cash') {
+                label = `💵 ${exp.description}`;
+                sub = `${exp.giver} → ${exp.receiver}`;
+            } else {
+                label = `🛒 ${exp.description}`;
+                sub = `${exp.payer} paid · split ${exp.splitWith.length}`;
+            }
 
-        el.innerHTML = state.players.length === 0
-            ? `<span style="font-size:13px;color:var(--text-muted)">Add players first.</span>`
-            : state.players.map(p => `
-                <button class="chip" data-pick="${slot}" data-name="${esc(p)}" aria-pressed="${cur === p}">${esc(p)}</button>`).join('');
-    });
-}
+            return { label, sub, cells, total: exp.amount };
+        });
+    }
 
-function onPickClick(e) {
-    const b = e.target.closest('[data-pick]');
-    if (!b) return;
-    const name = b.dataset.name;
-    // tapping the selected chip again clears it
-    if (b.dataset.pick === 'A') pickA = (pickA === name) ? '' : name;
-    else                        pickB = (pickB === name) ? '' : name;
-    renderPicks();
-}
+    // The signed components that add up to a player's net. Used by the page,
+    // the WhatsApp text and the image card, so all three always agree.
+    function breakdownRows(parts) {
+        return [
+            ['Paid on the group’s behalf', parts.paidForGroup],
+            ['Their share of the expenses', -parts.ownShare],
+            ['Bets won', parts.betsWon],
+            ['Bets lost', -parts.betsLost],
+            ['Cash handed over', parts.cashGiven],
+            ['Cash received', -parts.cashReceived]
+        ].filter(r => Math.abs(r[1]) >= EPS);
+    }
 
-function renderEntries() {
-    const card = $('entriesCard');
-    if (state.entries.length === 0) { card.hidden = true; return; }
-    card.hidden = false;
-
-    $('entries').innerHTML = state.entries.slice().reverse().map(en => {
-        let main, sub;
-        if (en.kind === 'expense') {
-            main = `🛒 <b>${esc(en.desc)}</b> — ${esc(en.from)} paid`;
-            sub = `Covers ${en.with.length}: ${en.with.map(esc).join(', ')} · ${money(en.amount / en.with.length)} each`;
-        } else if (en.kind === 'bet') {
-            main = `🎯 <b>${esc(en.desc)}</b>`;
-            sub = `${esc(en.with[0])} lost to ${esc(en.from)}`;
-        } else {
-            main = `💵 <b>${esc(en.desc)}</b>`;
-            sub = `${esc(en.from)} paid ${esc(en.with[0])} back`;
-        }
-
-        return `<div class="entry">
-            <div>
-                <div class="entry-main">${main}</div>
-                <div class="entry-sub">${sub}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-                <span class="entry-amt">${money(en.amount)}</span>
-                <button class="del" data-del="${en.id}" aria-label="Delete entry">✕</button>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function renderAll() {
-    derived = compute();
-    renderStanding();
-    renderPlan();
-    renderEntries();
-    renderShare();
-}
-
-/* ---------------- composer behaviour ---------------- */
-function applyMode() {
-    document.querySelectorAll('.seg button').forEach(b =>
-        b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
-
-    $('hint').textContent = HINTS[mode];
-
-    const isExpense = mode === 'expense';
-    $('fieldSplit').hidden = !isExpense;
-    $('fieldB').hidden = isExpense;
-
-    $('lblA').textContent = isExpense ? 'Who paid' : (mode === 'bet' ? 'Winner' : 'Who paid it back');
-    $('lblB').textContent = mode === 'bet' ? 'Loser' : 'Paid to';
-
-    $('desc').placeholder = isExpense ? 'What for? (e.g. green fees)'
-                          : (mode === 'bet' ? 'Which bet? (e.g. skins)' : 'Note (optional)');
-
-    $('addEntryBtn').textContent = isExpense ? 'Add expense'
-                                 : (mode === 'bet' ? 'Add bet' : 'Record payback');
-    clearErr('eErr');
-}
-
-function splitSelection() {
-    return Array.from(document.querySelectorAll('[data-split][aria-pressed="true"]'))
-                .map(b => b.dataset.split);
-}
-
-function addPlayers() {
-    clearErr('pErr');
-    const raw = $('pname').value.trim();
-    if (!raw) return showErr('pErr', 'Type a name first.');
-
-    const dupes = [];
-    let added = 0;
-
-    raw.split(',').map(s => s.trim()).filter(Boolean).forEach(name => {
-        if (state.players.some(p => p.toLowerCase() === name.toLowerCase())) dupes.push(name);
-        else { state.players.push(name); added++; }
-    });
-
-    if (dupes.length) showErr('pErr', `Already in: ${dupes.join(', ')}`);
-    if (added) {
-        $('pname').value = '';
-        renderPlayers();
-        renderAll();
+    function updateCurrency() {
+        currencySymbol = document.getElementById('currencySymbol').value.trim() || '₹';
+        renderExpenses();
+        if (document.getElementById('results').style.display === 'block') calculateSettlement(false);
         save();
     }
-}
 
-function dropPlayer(name) {
-    state.players = state.players.filter(p => p !== name);
-    state.entries = state.entries
-        .filter(en => en.from !== name)
-        .map(en => ({ ...en, with: en.with.filter(p => p !== name) }))
-        .filter(en => en.with.length > 0);
+    function setMode(mode) {
+        currentMode = mode;
+        document.getElementById('tabExpense').className = 'type-tab ' + (mode === 'expense' ? 'active' : '');
+        document.getElementById('tabBet').className = 'type-tab ' + (mode === 'bet' ? 'active' : '');
+        document.getElementById('tabCash').className = 'type-tab ' + (mode === 'cash' ? 'active' : '');
 
-    if (openDrawer === name) openDrawer = null;
-    renderPlayers();
-    renderAll();
-    save();
-}
+        document.getElementById('fieldsExpense').style.display = (mode === 'expense' ? 'block' : 'none');
+        document.getElementById('fieldsBet').style.display = (mode === 'bet' ? 'block' : 'none');
+        document.getElementById('fieldsCash').style.display = (mode === 'cash' ? 'block' : 'none');
 
-function addEntry() {
-    clearErr('eErr');
-    const amount = parseFloat($('amt').value);
-    const from = pickA;
-    const to = pickB;
-    const typed = $('desc').value.trim();
+        document.getElementById('modeHint').innerText = MODE_HINTS[mode];
 
-    if (state.players.length < 2) return showErr('eErr', 'Add at least two players first.');
-    if (!(amount > 0)) return showErr('eErr', 'Enter an amount above zero.');
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = mode === 'expense' ? 'Add Expense' : (mode === 'bet' ? 'Add Bet' : 'Add Cash Transfer');
 
-    let entry;
-
-    if (mode === 'expense') {
-        const withWho = splitSelection();
-        if (!from) return showErr('eErr', 'Pick who paid.');
-        if (withWho.length === 0) return showErr('eErr', 'Pick at least one person it covers.');
-        entry = { kind: 'expense', desc: typed || 'Shared expense', from, with: withWho, amount };
-
-    } else {
-        if (!from || !to) return showErr('eErr', 'Pick both people.');
-        if (from === to) return showErr('eErr', 'Pick two different people.');
-        entry = {
-            kind: mode,
-            desc: typed || (mode === 'bet' ? 'Bet' : 'Paid back'),
-            from, with: [to], amount
-        };
+        document.getElementById('expenseError').style.display = 'none';
     }
 
-    entry.id = ++state.seq;
-    state.entries.push(entry);
+    // --- PLAYERS ---
+    function addPlayers() {
+        const nameInput = document.getElementById('playerName');
+        const errDiv = document.getElementById('playerError');
+        errDiv.style.display = 'none';
 
-    $('amt').value = '';
-    $('desc').value = '';
+        const rawValue = nameInput.value.trim();
+        if (!rawValue) {
+            errDiv.innerText = "Please type a player name first.";
+            errDiv.style.display = "block";
+            return;
+        }
 
-    renderAll();
-    save();
-    toast('Added');
-}
+        const names = rawValue.split(',').map(n => n.trim()).filter(n => n.length > 0);
+        let addedCount = 0;
+        let duplicates = [];
 
-/* The shareable summary. WhatsApp renders *bold* between asterisks. */
-function summaryText() {
-    const { rows, plan } = derived;
-    const withWhy = $('optWhy').checked;
+        names.forEach(name => {
+            if (!players.some(p => p.toLowerCase() === name.toLowerCase())) {
+                players.push(name);
+                addedCount++;
+            } else {
+                duplicates.push(name);
+            }
+        });
 
-    if (state.players.length === 0 || state.entries.length === 0) {
-        return 'Nothing in this round yet.';
+        if (duplicates.length > 0) {
+            errDiv.innerText = addedCount === 0
+                ? `Already added: ${duplicates.join(', ')}`
+                : `Skipped duplicate(s): ${duplicates.join(', ')}`;
+            errDiv.style.display = "block";
+        }
+
+        if (addedCount > 0) {
+            updatePlayerUI();
+            nameInput.value = '';
+            save();
+        }
     }
 
-    let s = '⛳ *Golf Round — Settlement*\n\n';
+    function removePlayer(index) {
+        const removedPlayer = players[index];
+        players.splice(index, 1);
+        expenses = expenses.filter(e => e.payer !== removedPlayer);
 
-    if (plan.length === 0) {
-        s += '✅ *All square* — nobody owes anybody.\n';
-    } else {
-        s += `*Pay these ${plan.length} and everyone is square:*\n`;
-        plan.forEach(t => s += `• *${t.from}* ➔ *${t.to}* — ${money(t.amount)}\n`);
+        expenses.forEach(e => { e.splitWith = e.splitWith.filter(p => p !== removedPlayer); });
+        expenses = expenses.filter(e => e.splitWith.length > 0);
+
+        updatePlayerUI();
+        renderExpenses();
+
+        if (expenses.length === 0) document.getElementById('results').style.display = 'none';
+        save();
     }
 
-    s += '\n*Where everyone stands*\n';
-    rows.forEach(r => {
-        if (Math.abs(r.net) < EPS) s += `• ${r.name} — square\n`;
-        else s += `• ${r.name} — ${r.net > 0 ? 'is owed' : 'owes'} ${money(r.net)}\n`;
-    });
+    function updatePlayerUI() {
+        document.getElementById('playerList').innerHTML = players.map((p, i) => `
+            <span class="player-tag">
+                ${esc(p)} <button type="button" class="delete-btn" onclick="removePlayer(${i})">✕</button>
+            </span>
+        `).join('');
 
-    if (withWhy) {
-        s += '\n*How that was worked out*\n';
-        rows.forEach(r => {
-            const lines = componentLines(r.parts);
-            if (lines.length === 0) return;
-            s += `\n👤 *${r.name}*\n`;
-            lines.forEach(l => s += `   ${signed(l[1])}  ${l[0].toLowerCase()}\n`);
-            s += `   = ${Math.abs(r.net) < EPS ? 'square' : signed(r.net)}\n`;
+        renderPickers();
+
+        const checkGrid = document.getElementById('splitCheckboxes');
+        checkGrid.innerHTML = players.length === 0
+            ? '<div style="font-size: 12px; color: #888;">Add players above first</div>'
+            : players.map((p, i) => `
+                <div class="checkbox-item">
+                    <input type="checkbox" class="split-check" value="${esc(p)}" id="check_${i}" checked>
+                    <label for="check_${i}">${esc(p)}</label>
+                </div>
+            `).join('');
+    }
+
+    // --- ENTRIES ---
+    function addTransaction() {
+        const errDiv = document.getElementById('expenseError');
+        errDiv.style.display = 'none';
+        const fail = msg => { errDiv.innerText = msg; errDiv.style.display = 'block'; };
+
+        if (currentMode === 'expense') {
+            const desc = document.getElementById('expenseDesc').value.trim() || 'Shared Expense';
+            const payer = picks.payer;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const checkboxes = document.querySelectorAll('.split-check:checked');
+
+            if (!payer) return fail("Please select who paid.");
+            if (isNaN(amount) || amount <= 0) return fail("Please enter a valid amount.");
+            if (checkboxes.length === 0) return fail("Select at least one person splitting.");
+
+            expenses.push({
+                type: 'expense', description: desc, payer, amount,
+                splitWith: Array.from(checkboxes).map(cb => cb.value), id: nextId()
+            });
+
+            document.getElementById('amount').value = '';
+            document.getElementById('expenseDesc').value = '';
+
+        } else if (currentMode === 'bet') {
+            const desc = document.getElementById('betDesc').value.trim() || 'Bet';
+            const winner = picks.betWinner;
+            const loser = picks.betLoser;
+            const amount = parseFloat(document.getElementById('betAmount').value);
+
+            if (!winner || !loser) return fail("Please select both Winner and Loser.");
+            if (winner === loser) return fail("Winner and Loser cannot be the same person.");
+            if (isNaN(amount) || amount <= 0) return fail("Please enter a valid bet amount.");
+
+            expenses.push({
+                type: 'bet', description: desc, payer: winner, amount,
+                splitWith: [loser], winner, loser, id: nextId()
+            });
+
+            document.getElementById('betAmount').value = '';
+            document.getElementById('betDesc').value = '';
+
+        } else {
+            const desc = document.getElementById('cashDesc').value.trim() || 'Cash Transfer';
+            const giver = picks.cashGiver;
+            const receiver = picks.cashReceiver;
+            const amount = parseFloat(document.getElementById('cashAmount').value);
+
+            if (!giver || !receiver) return fail("Please select both Giver and Receiver.");
+            if (giver === receiver) return fail("Giver and Receiver cannot be the same person.");
+            if (isNaN(amount) || amount <= 0) return fail("Please enter a valid cash amount.");
+
+            expenses.push({
+                type: 'cash', description: desc, payer: giver, amount,
+                splitWith: [receiver], giver, receiver, id: nextId()
+            });
+
+            document.getElementById('cashAmount').value = '';
+            document.getElementById('cashDesc').value = '';
+        }
+
+        renderExpenses();
+        save();
+    }
+
+    let idCounter = 0;
+    function nextId() { return ++idCounter; }
+
+    function removeExpense(id) {
+        expenses = expenses.filter(e => e.id !== id);
+        renderExpenses();
+        save();
+    }
+
+    function renderExpenses() {
+        const logSection = document.getElementById('expenseLogSection');
+        const listDiv = document.getElementById('expenseList');
+
+        if (expenses.length === 0) {
+            logSection.style.display = 'none';
+            return;
+        }
+
+        logSection.style.display = 'block';
+        listDiv.innerHTML = expenses.map(e => {
+            const del = `<button type="button" class="delete-btn" onclick="removeExpense(${e.id})" style="font-size: 16px;">✕</button>`;
+
+            if (e.type === 'bet') {
+                return `<div class="expense-card bet">
+                    <div>
+                        <strong>🎯 Bet: ${esc(e.description)}</strong>
+                        <br><small style="color:#444;"><b>${esc(e.loser)}</b> owes <b>${esc(e.winner)}</b>: <strong>${money(e.amount)}</strong></small>
+                    </div>${del}</div>`;
+            }
+            if (e.type === 'cash') {
+                return `<div class="expense-card cash">
+                    <div>
+                        <strong>💵 Cash: ${esc(e.description)}</strong>
+                        <br><small style="color:#444;"><b>${esc(e.giver)}</b> handed <b>${esc(e.receiver)}</b>: <strong>${money(e.amount)}</strong></small>
+                    </div>${del}</div>`;
+            }
+            return `<div class="expense-card">
+                <div>
+                    <strong>🛒 ${esc(e.description)}</strong>: ${esc(e.payer)} paid <strong>${money(e.amount)}</strong>
+                    <br><small style="color:#666;">Split ${e.splitWith.length} ways (${money(e.amount / e.splitWith.length)} each): ${e.splitWith.map(esc).join(', ')}</small>
+                </div>${del}</div>`;
+        }).join('');
+    }
+
+    // --- ENGINE ---
+    function calculateSettlement(scroll = true) {
+        if (players.length === 0 || expenses.length === 0) return;
+
+        const N = players.length;
+        const idx = {};
+        players.forEach((p, i) => idx[p] = i);
+
+        // rawDebts[i][j] = gross amount i owes j, before netting
+        const rawDebts = Array(N).fill(0).map(() => Array(N).fill(0));
+
+        // Per player, the components that explain their net
+        const parts = {};
+        players.forEach(p => parts[p] = {
+            paidForGroup: 0, ownShare: 0,
+            betsWon: 0, betsLost: 0,
+            cashGiven: 0, cashReceived: 0
+        });
+
+        let totalSpend = 0;
+
+        expenses.forEach(exp => {
+            const payerIdx = idx[exp.payer];
+            const share = exp.amount / exp.splitWith.length;
+            const isShared = (exp.type === 'expense' || !exp.type);
+
+            if (isShared) {
+                totalSpend += exp.amount;
+                parts[exp.payer].paidForGroup += exp.amount;
+            } else if (exp.type === 'bet') {
+                parts[exp.winner].betsWon += exp.amount;
+            } else {
+                parts[exp.giver].cashGiven += exp.amount;
+            }
+
+            exp.splitWith.forEach(p => {
+                if (idx[p] === undefined) return;
+
+                if (isShared) parts[p].ownShare += share;
+                else if (exp.type === 'bet') parts[p].betsLost += share;
+                else parts[p].cashReceived += share;
+
+                if (idx[p] !== payerIdx) rawDebts[idx[p]][payerIdx] += share;
+            });
+        });
+
+        const balances = {};
+        players.forEach(p => {
+            const c = parts[p];
+            balances[p] = c.paidForGroup - c.ownShare + c.betsWon - c.betsLost + c.cashGiven - c.cashReceived;
+        });
+
+        const avgSpend = totalSpend / N;
+
+        // Net each pair against each other
+        const pairwise = Array(N).fill(0).map(() => Array(N).fill(0));
+        const directDebts = [];
+
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                const diff = rawDebts[i][j] - rawDebts[j][i];
+                if (diff > EPS) {
+                    pairwise[i][j] = diff;
+                    directDebts.push({ from: players[i], to: players[j], amount: diff });
+                } else if (diff < -EPS) {
+                    pairwise[j][i] = -diff;
+                    directDebts.push({ from: players[j], to: players[i], amount: -diff });
+                }
+            }
+        }
+
+        // Greedy min-cash-flow: settle the biggest debtor against the biggest creditor
+        const debtors = [];
+        const creditors = [];
+        players.forEach(p => {
+            if (balances[p] < -EPS) debtors.push({ name: p, amount: -balances[p] });
+            else if (balances[p] > EPS) creditors.push({ name: p, amount: balances[p] });
+        });
+        debtors.sort((a, b) => b.amount - a.amount);
+        creditors.sort((a, b) => b.amount - a.amount);
+
+        const transactions = [];
+        let d = 0, c = 0;
+        while (d < debtors.length && c < creditors.length) {
+            const payment = Math.min(debtors[d].amount, creditors[c].amount);
+            transactions.push({ from: debtors[d].name, to: creditors[c].name, amount: payment });
+            debtors[d].amount -= payment;
+            creditors[c].amount -= payment;
+            if (debtors[d].amount < EPS) d++;
+            if (creditors[c].amount < EPS) c++;
+        }
+
+        // What each player personally has to do
+        const actions = {};
+        players.forEach(p => actions[p] = { pays: [], receives: [] });
+        transactions.forEach(t => {
+            actions[t.from].pays.push({ who: t.to, amount: t.amount });
+            actions[t.to].receives.push({ who: t.from, amount: t.amount });
+        });
+
+        const cards = players.map(p => ({
+            name: p,
+            net: Math.abs(balances[p]) < EPS ? 0 : balances[p],
+            parts: parts[p],
+            action: actions[p]
+        })).sort((a, b) => b.net - a.net);
+
+        last = { transactions, directDebts, cards, totalSpend, avgSpend, grid: buildGrid() };
+
+        renderResults(pairwise, scroll);
+    }
+
+    function renderResults(pairwise, scroll) {
+        const { transactions, directDebts, cards } = last;
+
+        // A. Headline + payment list
+        const verdictMain = document.getElementById('verdictMain');
+        const verdictSub = document.getElementById('verdictSub');
+        const payList = document.getElementById('paymentList');
+
+        if (transactions.length === 0) {
+            verdictMain.innerText = "Nobody owes anybody.";
+            verdictSub.innerText = "Every player's contributions already cancel out.";
+            payList.innerHTML = `<div class="all-square">✅ All square — walk away</div>`;
+        } else {
+            const n = transactions.length;
+            verdictMain.innerText = `${n} payment${n > 1 ? 's' : ''} settle${n > 1 ? '' : 's'} the round.`;
+            verdictSub.innerText = "Make these and everyone is square. Nothing else needs to move.";
+            payList.innerHTML = transactions.map(t => `
+                <div class="payment">
+                    <div class="pay-people">
+                        <span class="name">${esc(t.from)}</span>
+                        <span class="pay-arrow">pays →</span>
+                        <span class="name">${esc(t.to)}</span>
+                    </div>
+                    <div class="pay-amt">${money(t.amount)}</div>
+                </div>
+            `).join('');
+        }
+
+        // B. The spreadsheet grid
+        let gridHTML = `<thead><tr><th class="item"><div class="item-in">Line item</div></th>`;
+        players.forEach(p => gridHTML += `<th>${esc(p)}</th>`);
+        gridHTML += `<th class="col-total">Total</th></tr></thead><tbody>`;
+
+        last.grid.forEach(row => {
+            gridHTML += `<tr><td class="item"><div class="item-in">${esc(row.label)}<small>${esc(row.sub)}</small></div></td>`;
+            row.cells.forEach(v => {
+                const cls = Math.abs(v) < EPS ? 'amt-nil' : (v > 0 ? 'amt-in' : 'amt-out');
+                gridHTML += `<td class="${cls}">${Math.abs(v) < EPS ? '–' : cell(v)}</td>`;
+            });
+            gridHTML += `<td class="col-total">${cell(row.total)}</td></tr>`;
+        });
+
+        gridHTML += `<tr class="net-row"><td class="item"><div class="item-in">NET</div></td>`;
+        players.forEach(p => {
+            const c = cards.find(x => x.name === p);
+            const v = c ? c.net : 0;
+            const cls = Math.abs(v) < EPS ? 'amt-nil' : (v > 0 ? 'amt-in' : 'amt-out');
+            gridHTML += `<td class="${cls}">${Math.abs(v) < EPS ? '–' : cell(v)}</td>`;
+        });
+        gridHTML += `<td class="col-total">–</td></tr></tbody>`;
+
+        document.getElementById('gridTable').innerHTML = gridHTML;
+
+        document.getElementById('gridNote').innerHTML =
+            `Amounts in ${esc(currencySymbol)}. A plain number is money <b>in</b> (they paid, or won) — ` +
+            `<b>(brackets)</b> are money <b>out</b> (their share, or a loss). Every row cancels to zero; ` +
+            `the <b>Total</b> column is the size of that entry. <b>NET</b> is each player's bottom line — ` +
+            `positive means the group owes them.`;
+
+        // C. Per-player cards with the arithmetic laid out
+        document.getElementById('playerCards').innerHTML = cards.map(card => {
+            const { name, net, parts, action } = card;
+
+            const state = net > EPS ? 'get' : (net < -EPS ? 'pay' : 'even');
+            const verdictText = state === 'get' ? `gets ${money(net)}`
+                              : state === 'pay' ? `pays ${money(net)}`
+                              : 'all square';
+
+            const rows = breakdownRows(parts).map(r => `
+                    <div class="bd-row">
+                        <span class="bd-label">${r[0]}</span>
+                        <span class="bd-val">${signed(r[1])}</span>
+                    </div>`);
+
+            rows.push(`
+                <div class="bd-row total">
+                    <span class="bd-label">Net position</span>
+                    <span class="bd-val">${signed(net)}</span>
+                </div>`);
+
+            let actionText;
+            if (action.pays.length) {
+                actionText = 'Pay ' + action.pays.map(a => `<b>${money(a.amount)}</b> to <b>${esc(a.who)}</b>`).join(', and ') + '.';
+            } else if (action.receives.length) {
+                actionText = 'Collect ' + action.receives.map(a => `<b>${money(a.amount)}</b> from <b>${esc(a.who)}</b>`).join(', and ') + '.';
+            } else {
+                actionText = 'Nothing to do — already even.';
+            }
+
+            return `
+                <div class="player-card is-${state}">
+                    <div class="pc-head">
+                        <span class="pc-name">👤 ${esc(name)}</span>
+                        <span class="pc-verdict ${state}">${verdictText}</span>
+                    </div>
+                    <div class="pc-action">${actionText}</div>
+                    <div class="breakdown">${rows.join('')}</div>
+                </div>`;
+        }).join('');
+
+        // D. Detail
+        document.getElementById('detailSummary').innerText =
+            `Show the person-to-person detail (${directDebts.length} direct debt${directDebts.length === 1 ? '' : 's'} → ${transactions.length} payment${transactions.length === 1 ? '' : 's'})`;
+
+        document.getElementById('detailIntro').innerHTML =
+            directDebts.length === 0
+                ? 'No direct debts between any pair of players.'
+                : `Settling every pair separately would take <b>${directDebts.length}</b> transfer${directDebts.length === 1 ? '' : 's'}. ` +
+                  `The plan above routes the same money through <b>${transactions.length}</b> payment${transactions.length === 1 ? '' : 's'} — ` +
+                  `the amounts look different because debts get passed along, but everyone ends at the same net.`;
+
+        document.getElementById('directList').innerHTML = directDebts.map(d => `
+            <div class="direct-line">${esc(d.from)} owes ${esc(d.to)} <b>${money(d.amount)}</b></div>
+        `).join('');
+
+        let tableHTML = `<thead><tr><th class="corner">owes ↓ / to →</th>`;
+        players.forEach(p => tableHTML += `<th>${esc(p)}</th>`);
+        tableHTML += `<th>Net</th></tr></thead><tbody>`;
+
+        players.forEach((rowP, i) => {
+            tableHTML += `<tr><th>${esc(rowP)}</th>`;
+            for (let j = 0; j < players.length; j++) {
+                if (i === j) {
+                    tableHTML += `<td class="self-cell">—</td>`;
+                } else if (pairwise[i][j] > EPS) {
+                    tableHTML += `<td class="owed">${money(pairwise[i][j])}</td>`;
+                } else {
+                    tableHTML += `<td class="nil">—</td>`;
+                }
+            }
+            const net = last.cards.find(c => c.name === rowP).net;
+            const cls = net > EPS ? 'positive' : (net < -EPS ? 'negative' : '');
+            const sign = net > EPS ? '+' : (net < -EPS ? '−' : '');
+            tableHTML += `<td class="${cls}">${sign}${money(net)}</td></tr>`;
+        });
+        tableHTML += `</tbody>`;
+        document.getElementById('crossTable').innerHTML = tableHTML;
+
+        const resDiv = document.getElementById('results');
+        resDiv.style.display = 'block';
+        document.getElementById('graphicPreview').style.display = 'none';
+        if (scroll) resDiv.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // --- EXPORTS ---
+    function shareWhatsApp() {
+        if (last.cards.length === 0) return;
+
+        let msg = "⛳ *Golf Round Settlement*\n\n";
+
+        if (last.transactions.length === 0) {
+            msg += "✅ *All square* — nobody owes anybody.\n\n";
+        } else {
+            msg += `*Pay these ${last.transactions.length} and everyone is square:*\n`;
+            last.transactions.forEach(t => {
+                msg += `• *${t.from}* ➔ *${t.to}*: ${money(t.amount)}\n`;
+            });
+            msg += `\n`;
+        }
+
+        msg += `📊 Shared spend: ${money(last.totalSpend)}  |  Avg/player: ${money(last.avgSpend)}\n\n`;
+
+        msg += "*Where each number comes from:*\n";
+        last.cards.forEach(c => {
+            const p = c.parts;
+            const verdict = c.net > EPS ? `gets ${money(c.net)}` : (c.net < -EPS ? `pays ${money(c.net)}` : `all square`);
+            msg += `👤 *${c.name}* — ${verdict}\n`;
+            if (p.paidForGroup >= EPS) msg += `   +${money(p.paidForGroup)} paid for the group\n`;
+            if (p.ownShare >= EPS)     msg += `   −${money(p.ownShare)} own share\n`;
+            if (p.betsWon >= EPS)      msg += `   +${money(p.betsWon)} bets won\n`;
+            if (p.betsLost >= EPS)     msg += `   −${money(p.betsLost)} bets lost\n`;
+            if (p.cashGiven >= EPS)    msg += `   +${money(p.cashGiven)} cash handed over\n`;
+            if (p.cashReceived >= EPS) msg += `   −${money(p.cashReceived)} cash received\n`;
+            msg += `\n`;
+        });
+
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function generateGraphic() {
+        const canvas = document.getElementById('exportCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Column widths for the grid drive the whole canvas width
+        ctx.font = 'bold 13px -apple-system, sans-serif';
+        const LABEL_W = 178;
+        const colW = Math.max(
+            84,
+            ...players.map(p => ctx.measureText(p).width + 22),
+            ...last.grid.flatMap(r => r.cells.map(v => ctx.measureText(cell(v)).width + 22)),
+            ...last.cards.map(c => ctx.measureText(cell(c.net)).width + 22)
+        );
+        const TOTAL_W = Math.max(84, ...last.grid.map(r => ctx.measureText(cell(r.total)).width + 22));
+        const gridW = LABEL_W + players.length * colW + TOTAL_W;
+
+        const W = Math.max(620, gridW + 60);
+        const headerH = 108;
+        const planH = 46 + Math.max(last.transactions.length, 1) * 46;
+
+        const ROW_H = 34;
+        const gridH = 46 + (last.grid.length + 2) * ROW_H + 40;
+
+        // each player block: name line + one line per component + net line + gap
+        const blocks = last.cards.map(c => breakdownRows(c.parts));
+        const detailH = 46 + blocks.reduce((t, rows) => t + 26 + rows.length * 22 + 28 + 14, 0);
+
+        const H = headerH + planH + gridH + detailH + 40;
+
+        canvas.width = W;
+        canvas.height = H;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = '#1b5e20';
+        ctx.fillRect(0, 0, W, headerH);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px -apple-system, sans-serif';
+        ctx.fillText('⛳ GOLF ROUND SETTLEMENT', 30, 44);
+
+        ctx.font = '15px -apple-system, sans-serif';
+        const headline = last.transactions.length === 0
+            ? 'All square — nobody owes anybody'
+            : `${last.transactions.length} payment${last.transactions.length > 1 ? 's' : ''} settle the round`;
+        ctx.fillText(`${headline}  •  Shared spend ${money(last.totalSpend)}`, 30, 78);
+
+        let y = headerH + 38;
+
+        ctx.fillStyle = '#1b5e20';
+        ctx.font = 'bold 16px -apple-system, sans-serif';
+        ctx.fillText('WHO PAYS WHOM', 30, y);
+        y += 12;
+
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(W - 30, y); ctx.stroke();
+        y += 32;
+
+        if (last.transactions.length === 0) {
+            ctx.font = '16px -apple-system, sans-serif';
+            ctx.fillStyle = '#333';
+            ctx.fillText('Everyone is completely even.', 30, y);
+            y += 30;
+        } else {
+            last.transactions.forEach(t => {
+                ctx.fillStyle = '#e8f5e9';
+                ctx.fillRect(30, y - 21, W - 60, 38);
+                ctx.fillStyle = '#2e7d32';
+                ctx.font = 'bold 16px -apple-system, sans-serif';
+                ctx.fillText(`${t.from}  ➔  ${t.to}`, 45, y + 4);
+                ctx.textAlign = 'right';
+                ctx.fillText(money(t.amount), W - 45, y + 4);
+                ctx.textAlign = 'left';
+                y += 46;
+            });
+        }
+
+        // ---- the spreadsheet grid ----
+        y += 16;
+        ctx.fillStyle = '#1b5e20';
+        ctx.font = 'bold 16px -apple-system, sans-serif';
+        ctx.fillText('LINE BY LINE', 30, y);
+        y += 12;
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(W - 30, y); ctx.stroke();
+        y += 18;
+
+        const gx = 30;
+        const colX = i => gx + LABEL_W + i * colW;   // right edge of column i
+        const totalX = gx + LABEL_W + players.length * colW + TOTAL_W;
+
+        // header band
+        ctx.fillStyle = '#2e7d32';
+        ctx.fillRect(gx, y, gridW, ROW_H);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px -apple-system, sans-serif';
+        ctx.fillText('Line item', gx + 10, y + 22);
+        ctx.textAlign = 'right';
+        players.forEach((p, i) => ctx.fillText(p, colX(i) + colW - 10, y + 22));
+        ctx.fillText('Total', totalX - 10, y + 22);
+        ctx.textAlign = 'left';
+        y += ROW_H;
+
+        // entry rows
+        last.grid.forEach((row, ri) => {
+            if (ri % 2 === 1) {
+                ctx.fillStyle = '#fafafa';
+                ctx.fillRect(gx, y, gridW, ROW_H);
+            }
+
+            ctx.fillStyle = '#222222';
+            ctx.font = 'bold 12.5px -apple-system, sans-serif';
+            let lab = row.label;
+            while (ctx.measureText(lab).width > LABEL_W - 16 && lab.length > 4) lab = lab.slice(0, -2);
+            if (lab !== row.label) lab += '…';
+            ctx.fillText(lab, gx + 10, y + 15);
+
+            ctx.fillStyle = '#888888';
+            ctx.font = '10.5px -apple-system, sans-serif';
+            let sub = row.sub;
+            while (ctx.measureText(sub).width > LABEL_W - 16 && sub.length > 4) sub = sub.slice(0, -2);
+            if (sub !== row.sub) sub += '…';
+            ctx.fillText(sub, gx + 10, y + 27);
+
+            ctx.font = '13px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            row.cells.forEach((v, i) => {
+                if (Math.abs(v) < EPS) { ctx.fillStyle = '#cccccc'; ctx.fillText('–', colX(i) + colW - 10, y + 21); }
+                else {
+                    ctx.fillStyle = v > 0 ? '#2e7d32' : '#c62828';
+                    ctx.fillText(cell(v), colX(i) + colW - 10, y + 21);
+                }
+            });
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 13px -apple-system, sans-serif';
+            ctx.fillText(cell(row.total), totalX - 10, y + 21);
+            ctx.textAlign = 'left';
+
+            ctx.strokeStyle = '#eeeeee';
+            ctx.beginPath(); ctx.moveTo(gx, y + ROW_H); ctx.lineTo(gx + gridW, y + ROW_H); ctx.stroke();
+            y += ROW_H;
+        });
+
+        // NET row
+        ctx.fillStyle = '#e8f5e9';
+        ctx.fillRect(gx, y, gridW, ROW_H);
+        ctx.strokeStyle = '#2e7d32';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx + gridW, y); ctx.stroke();
+        ctx.lineWidth = 1;
+
+        ctx.fillStyle = '#1b5e20';
+        ctx.font = 'bold 13.5px -apple-system, sans-serif';
+        ctx.fillText('NET', gx + 10, y + 22);
+        ctx.textAlign = 'right';
+        players.forEach((p, i) => {
+            const c = last.cards.find(x => x.name === p);
+            const v = c ? c.net : 0;
+            ctx.fillStyle = Math.abs(v) < EPS ? '#999999' : (v > 0 ? '#2e7d32' : '#c62828');
+            ctx.fillText(Math.abs(v) < EPS ? '–' : cell(v), colX(i) + colW - 10, y + 22);
+        });
+        ctx.fillStyle = '#999999';
+        ctx.fillText('–', totalX - 10, y + 22);
+        ctx.textAlign = 'left';
+        y += ROW_H + 16;
+
+        ctx.fillStyle = '#777777';
+        ctx.font = '11.5px -apple-system, sans-serif';
+        ctx.fillText(`Amounts in ${currencySymbol}. Plain = money in · (brackets) = money out. Every row cancels to zero.`, gx, y);
+        y += 24;
+
+        ctx.strokeStyle = '#e0e0e0';
+
+        // ---- per-player breakdown ----
+        y += 16;
+        ctx.fillStyle = '#1b5e20';
+        ctx.font = 'bold 16px -apple-system, sans-serif';
+        ctx.fillText('WHERE EACH NUMBER COMES FROM', 30, y);
+        y += 12;
+        ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(W - 30, y); ctx.stroke();
+        y += 26;
+
+        last.cards.forEach((c, i) => {
+            const rows = blocks[i];
+
+            // name, and the verdict on the right
+            ctx.font = 'bold 15px -apple-system, sans-serif';
+            ctx.fillStyle = '#222222';
+            ctx.fillText(c.name, 30, y);
+
+            ctx.fillStyle = c.net > EPS ? '#2e7d32' : (c.net < -EPS ? '#c62828' : '#6b7280');
+            const verdict = c.net > EPS ? `gets ${money(c.net)}`
+                          : (c.net < -EPS ? `pays ${money(c.net)}` : 'all square');
+            ctx.textAlign = 'right';
+            ctx.fillText(verdict, W - 30, y);
+            ctx.textAlign = 'left';
+            y += 26;
+
+            // the signed components
+            ctx.font = '13.5px -apple-system, sans-serif';
+            rows.forEach(r => {
+                ctx.fillStyle = '#555555';
+                ctx.fillText(r[0], 46, y);
+
+                ctx.fillStyle = r[1] > 0 ? '#2e7d32' : '#c62828';
+                ctx.textAlign = 'right';
+                ctx.fillText((r[1] > 0 ? '+' : '−') + money(r[1]), W - 30, y);
+                ctx.textAlign = 'left';
+                y += 22;
+            });
+
+            if (rows.length === 0) {
+                ctx.fillStyle = '#888888';
+                ctx.fillText('Nothing recorded', 46, y);
+                y += 22;
+            }
+
+            // the net, ruled off
+            ctx.strokeStyle = '#d8d8d8';
+            ctx.beginPath(); ctx.moveTo(46, y - 12); ctx.lineTo(W - 30, y - 12); ctx.stroke();
+
+            ctx.font = 'bold 14px -apple-system, sans-serif';
+            ctx.fillStyle = '#222222';
+            ctx.fillText('Net', 46, y + 6);
+
+            ctx.fillStyle = c.net > EPS ? '#2e7d32' : (c.net < -EPS ? '#c62828' : '#6b7280');
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.abs(c.net) < EPS ? money(0) : (c.net > 0 ? '+' : '−') + money(c.net), W - 30, y + 6);
+            ctx.textAlign = 'left';
+
+            y += 28 + 14;
+            ctx.strokeStyle = '#e0e0e0';
+        });
+
+        document.getElementById('generatedImage').src = canvas.toDataURL('image/png');
+
+        const previewDiv = document.getElementById('graphicPreview');
+        previewDiv.style.display = 'block';
+        previewDiv.scrollIntoView({ behavior: 'smooth' });
+
+        canvas.toBlob(blob => {
+            const file = new File([blob], 'golf-settlement.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    files: [file],
+                    title: 'Golf Settlement',
+                    text: 'Here is our golf expense settlement card!'
+                }).catch(() => {});
+            }
         });
     }
 
-    const spend = state.entries
-        .filter(e => e.kind === 'expense')
-        .reduce((t, e) => t + e.amount, 0);
+    function resetAll() {
+        players = [];
+        expenses = [];
+        last = { transactions: [], directDebts: [], cards: [], totalSpend: 0, avgSpend: 0 };
 
-    if (spend > 0) s += `\n_Shared spend this round: ${money(spend)}_`;
+        ['playerName', 'amount', 'expenseDesc', 'betAmount', 'betDesc', 'cashAmount', 'cashDesc']
+            .forEach(id => document.getElementById(id).value = '');
 
-    return s;
-}
+        document.getElementById('playerError').style.display = 'none';
+        document.getElementById('expenseError').style.display = 'none';
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('graphicPreview').style.display = 'none';
 
-function renderShare() {
-    const text = summaryText();
+        Object.keys(picks).forEach(k => picks[k] = '');
 
-    // preview mirrors WhatsApp's *bold* rendering
-    $('sharePreview').innerHTML = esc(text)
-        .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
-        .replace(/_([^_\n]+)_/g, '<i>$1</i>');
+        setMode('expense');
+        updatePlayerUI();
+        renderExpenses();
 
-    const empty = state.entries.length === 0;
-    $('waBtn').disabled = empty;
-    $('copyBtn').disabled = empty;
-    $('waBtn').style.opacity = empty ? .5 : 1;
-}
-
-/* ---------------- wiring ---------------- */
-$('addPlayerBtn').addEventListener('click', addPlayers);
-$('pname').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayers(); });
-$('addEntryBtn').addEventListener('click', addEntry);
-$('amt').addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
-
-$('playerChips').addEventListener('click', e => {
-    const b = e.target.closest('[data-drop]');
-    if (b) dropPlayer(b.dataset.drop);
-});
-
-$('pickA').addEventListener('click', onPickClick);
-$('pickB').addEventListener('click', onPickClick);
-
-$('splitChips').addEventListener('click', e => {
-    const b = e.target.closest('[data-split]');
-    if (!b) return;
-    b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
-});
-
-$('allNoneBtn').addEventListener('click', () => {
-    const chips = Array.from(document.querySelectorAll('[data-split]'));
-    const allOn = chips.every(c => c.getAttribute('aria-pressed') === 'true');
-    chips.forEach(c => c.setAttribute('aria-pressed', String(!allOn)));
-    $('allNoneBtn').textContent = allOn ? 'select all' : 'select none';
-});
-
-document.querySelector('.seg').addEventListener('click', e => {
-    const b = e.target.closest('[data-mode]');
-    if (!b) return;
-    mode = b.dataset.mode;
-    applyMode();
-});
-
-$('entries').addEventListener('click', e => {
-    const b = e.target.closest('[data-del]');
-    if (!b) return;
-    state.entries = state.entries.filter(en => en.id !== Number(b.dataset.del));
-    renderAll();
-    save();
-});
-
-// tap a name to open its breakdown
-const standing = $('standing');
-
-function toggleDrawer(row) {
-    openDrawer = openDrawer === row.dataset.name ? null : row.dataset.name;
-    renderStanding();
-}
-
-standing.addEventListener('click', e => {
-    const row = e.target.closest('.stand-row');
-    if (row) toggleDrawer(row);
-});
-
-standing.addEventListener('keydown', e => {
-    const row = e.target.closest('.stand-row');
-    if (!row || (e.key !== 'Enter' && e.key !== ' ')) return;
-    e.preventDefault();
-    toggleDrawer(row);
-});
-
-$('cur').addEventListener('input', () => {
-    state.cur = $('cur').value.trim() || '₹';
-    renderAll();
-    save();
-});
-
-$('themeBtn').addEventListener('click', () => {
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem(STORE + '-theme', next); } catch (e) {}
-});
-
-$('optWhy').addEventListener('change', renderShare);
-
-$('waBtn').addEventListener('click', () => {
-    if (state.entries.length === 0) return;
-    window.open('https://wa.me/?text=' + encodeURIComponent(summaryText()), '_blank');
-});
-
-$('copyBtn').addEventListener('click', async () => {
-    if (state.entries.length === 0) return;
-    try {
-        await navigator.clipboard.writeText(summaryText());
-        toast('Summary copied');
-    } catch (e) {
-        toast('Copy failed — select the text above');
+        try { localStorage.removeItem(STORE); } catch (e) {}
     }
-});
 
-$('clearBtn').addEventListener('click', () => {
-    if (state.entries.length && !confirm('Clear all players and entries?')) return;
-    state = { cur: state.cur, players: [], entries: [], seq: 0 };
-    openDrawer = null;
-    renderPlayers();
-    renderAll();
-    save();
-    toast('Cleared');
-});
-
-/* ---------------- boot ---------------- */
-load();
-$('cur').value = state.cur;
-applyMode();
-renderPlayers();
-renderAll();
+    setMode('expense');
+    restore();
 </script>
 
 </body>
