@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caddie — live round settler</title>
+<style>
+    :root {
+        color-scheme: light;
+        --surface-0: #f2f1ee;
+        --surface-1: #fcfcfb;
+        --surface-2: #ffffff;
+        --line:      #e4e3de;
+        --line-soft: #efeeea;
+        --text-primary:   #0b0b0b;
+        --text-secondary: #52514e;
+        --text-muted:     #86847e;
+        --ink:       #1f2421;
+        --accent:    #1b5e20;
+        /* Diverging pair: blue (is owed) <-> red (owes), gray midpoint. Validated. */
+        --pos:       #2a78d6;
+        --neg:       #e34948;
+        --neutral:   #f0efec;
+        --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root:where(:not([data-theme="light"])) {
+            color-scheme: dark;
+            --surface-0: #121211;
+            --surface-1: #1a1a19;
+            --surface-2: #232322;
+            --line:      #35352f;
+            --line-soft: #2a2a27;
+            --text-primary:   #ffffff;
+            --text-secondary: #c3c2b7;
+            --text-muted:     #8f8e88;
+            --ink:       #e9e8e2;
+            --accent:    #7bbf7f;
+            --pos:       #3987e5;
+            --neg:       #e66767;
+            --neutral:   #383835;
+            --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+        }
+    }
+
+    :root[data-theme="dark"] {
+        color-scheme: dark;
+        --surface-0: #121211;
+        --surface-1: #1a1a19;
+        --surface-2: #232322;
+        --line:      #35352f;
+        --line-soft: #2a2a27;
+        --text-primary:   #ffffff;
+        --text-secondary: #c3c2b7;
+        --text-muted:     #8f8e88;
+        --ink:       #e9e8e2;
+        --accent:    #7bbf7f;
+        --pos:       #3987e5;
+        --neg:       #e66767;
+        --neutral:   #383835;
+        --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        padding: 0 0 60px 0;
+        background: var(--surface-0);
+        color: var(--text-primary);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.45;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
+
+    /* ---------- header ---------- */
+    header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; margin-bottom: 16px;
+    }
+
+    .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+    .wordmark .flag { color: var(--accent); }
+    .wordmark small {
+        display: block; font-size: 11.5px; font-weight: 500;
+        color: var(--text-muted); letter-spacing: 0; margin-top: 1px;
+    }
+
+    .header-tools { display: flex; align-items: center; gap: 6px; }
+
+    .cur-input {
+        width: 52px; padding: 7px 4px; text-align: center;
+        font: inherit; font-weight: 700; font-size: 15px;
+        background: var(--surface-2); color: var(--text-primary);
+        border: 1px solid var(--line); border-radius: 8px;
+    }
+
+    .icon-btn {
+        width: 36px; height: 36px; padding: 0;
+        display: grid; place-items: center;
+        background: var(--surface-2); color: var(--text-secondary);
+        border: 1px solid var(--line); border-radius: 8px;
+        cursor: pointer; font-size: 15px;
+    }
+
+    .icon-btn:hover { color: var(--text-primary); }
+
+    /* ---------- cards ---------- */
+    .card {
+        background: var(--surface-1);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+        box-shadow: var(--shadow);
+    }
+
+    .card-title {
+        font-size: 11px; font-weight: 700; letter-spacing: .07em;
+        text-transform: uppercase; color: var(--text-muted);
+        margin: 0 0 12px 0;
+    }
+
+    .empty {
+        color: var(--text-muted); font-size: 14px;
+        text-align: center; padding: 18px 8px; line-height: 1.6;
+    }
+
+    /* ---------- standing list ---------- */
+    .stand-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--line-soft);
+        cursor: pointer; border-radius: 8px;
+    }
+
+    .stand-row:last-of-type { border-bottom: none; }
+    .stand-row:hover { background: var(--line-soft); }
+
+    .stand-name {
+        font-size: 14.5px; font-weight: 600; flex: 1;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .pill {
+        font-size: 11px; font-weight: 700; letter-spacing: .03em;
+        text-transform: uppercase;
+        padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+        color: #fff;
+    }
+
+    .pill.pos { background: var(--pos); }
+    .pill.neg { background: var(--neg); }
+    .pill.zero { background: var(--neutral); color: var(--text-secondary); }
+
+    .stand-amt {
+        font-size: 15px; font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap; text-align: right;
+        min-width: 96px;
+    }
+
+    .stand-amt.is-zero { color: var(--text-muted); font-weight: 600; }
+
+    .chart-foot {
+        font-size: 12px; color: var(--text-muted);
+        margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft);
+        line-height: 1.5;
+    }
+
+    /* breakdown drawer, opened by clicking a bar */
+    .drawer {
+        grid-column: 1 / -1;
+        margin: 2px 0 8px 0;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+    }
+
+    .bd-row {
+        display: flex; justify-content: space-between; gap: 12px;
+        font-size: 13px; padding: 4px 0;
+        border-bottom: 1px dashed var(--line-soft);
+    }
+    .bd-row:last-child { border-bottom: none; }
+    .bd-row.total {
+        border-top: 1.5px solid var(--line); border-bottom: none;
+        margin-top: 3px; padding-top: 7px; font-weight: 700;
+    }
+    .bd-label { color: var(--text-secondary); }
+    .bd-val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+    .bd-row.total .bd-label { color: var(--text-primary); }
+
+    .drawer-action {
+        font-size: 12.5px; color: var(--text-secondary);
+        margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft);
+    }
+    .drawer-action b { color: var(--text-primary); }
+
+    /* ---------- plan ---------- */
+    .plan-head {
+        font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+        margin-bottom: 10px;
+    }
+
+    .pay {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; padding: 11px 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 10px; margin-bottom: 7px;
+    }
+
+    .pay-who { font-size: 14.5px; }
+    .pay-who b { font-weight: 700; }
+    .pay-who .arr { color: var(--text-muted); margin: 0 5px; }
+    .pay-amt { font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .square {
+        text-align: center; padding: 16px;
+        background: var(--surface-2); border: 1px solid var(--line);
+        border-radius: 10px; font-weight: 600;
+    }
+
+    /* ---------- composer ---------- */
+    .seg {
+        display: flex; gap: 4px; padding: 4px;
+        background: var(--surface-0); border: 1px solid var(--line);
+        border-radius: 10px; margin-bottom: 12px;
+    }
+
+    .seg button {
+        flex: 1; padding: 8px 4px;
+        font: inherit; font-size: 12.5px; font-weight: 600;
+        background: transparent; color: var(--text-secondary);
+        border: none; border-radius: 7px; cursor: pointer;
+    }
+
+    .seg button[aria-selected="true"] {
+        background: var(--surface-2); color: var(--text-primary);
+        box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+
+    .hint { font-size: 12.5px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.5; }
+
+    .field { margin-bottom: 10px; }
+    .field label {
+        display: block; font-size: 11.5px; font-weight: 600;
+        color: var(--text-secondary); margin-bottom: 4px;
+    }
+
+    .row2 { display: flex; gap: 8px; }
+    .row2 > * { flex: 1; min-width: 0; }
+
+    input[type="text"], input[type="number"], select {
+        width: 100%; padding: 11px 12px;
+        font: inherit; font-size: 16px;
+        background: var(--surface-2); color: var(--text-primary);
+        border: 1px solid var(--line); border-radius: 9px;
+        -webkit-appearance: none; appearance: none;
+    }
+
+    select {
+        background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                          linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+        background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+        background-size: 5px 5px, 5px 5px;
+        background-repeat: no-repeat;
+        padding-right: 32px;
+    }
+
+    input:focus, select:focus { outline: 2px solid var(--pos); outline-offset: 1px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .chip {
+        padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600;
+        background: var(--surface-2); color: var(--text-secondary);
+        border: 1px solid var(--line); border-radius: 20px; cursor: pointer;
+    }
+
+    .chip[aria-pressed="true"] {
+        background: var(--ink); color: var(--surface-1); border-color: var(--ink);
+    }
+
+    .chip-x { margin-left: 5px; opacity: .55; }
+
+    .split-head {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-bottom: 5px;
+    }
+
+    .linkbtn {
+        background: none; border: none; padding: 0; cursor: pointer;
+        font: inherit; font-size: 11.5px; font-weight: 600;
+        color: var(--pos); text-decoration: underline;
+    }
+
+    .btn {
+        width: 100%; padding: 13px;
+        font: inherit; font-size: 15px; font-weight: 700;
+        background: var(--ink); color: var(--surface-1);
+        border: none; border-radius: 10px; cursor: pointer;
+    }
+
+    .btn:active { opacity: .85; }
+    .btn.ghost {
+        background: transparent; color: var(--text-secondary);
+        border: 1px solid var(--line); font-weight: 600;
+    }
+
+    .btn-row { display: flex; gap: 8px; }
+
+    .err {
+        color: var(--neg); font-size: 12.5px; margin-top: 8px; display: none;
+    }
+
+    /* ---------- entries ---------- */
+    .entry {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 10px; padding: 10px 0;
+        border-bottom: 1px solid var(--line-soft);
+        font-size: 13.5px;
+    }
+    .entry:last-child { border-bottom: none; }
+    .entry-main b { font-weight: 700; }
+    .entry-sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+    .entry-amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .del {
+        background: none; border: none; cursor: pointer;
+        color: var(--text-muted); font-size: 15px; padding: 0 2px; line-height: 1;
+    }
+    .del:hover { color: var(--neg); }
+
+    /* ---------- share ---------- */
+    .share-preview {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 12.5px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 260px;
+        overflow-y: auto;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+    }
+
+    .share-preview b { color: var(--text-primary); font-weight: 700; }
+
+    .opt {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; color: var(--text-secondary);
+        margin-bottom: 12px; cursor: pointer; user-select: none;
+    }
+
+    .opt input { width: 17px; height: 17px; accent-color: var(--pos); cursor: pointer; }
+
+    .btn.wa { background: #25D366; color: #05231a; }
+
+    .toast {
+        position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(8px);
+        background: var(--ink); color: var(--surface-1);
+        padding: 10px 16px; border-radius: 999px;
+        font-size: 13.5px; font-weight: 600;
+        opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+        z-index: 60;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+    <div class="wordmark">
+        <span class="flag">⛳</span> Caddie
+        <small>Live round settler</small>
+    </div>
+    <div class="header-tools">
+        <input class="cur-input" id="cur" value="₹" maxlength="3" aria-label="Currency symbol">
+        <button class="icon-btn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light or dark theme">◐</button>
+    </div>
+</header>
+
+<!-- THE STANDING — always on screen, always current -->
+<section class="card">
+    <h2 class="card-title">Where everyone stands</h2>
+    <div id="standing"></div>
+</section>
+
+<!-- THE PLAN -->
+<section class="card">
+    <h2 class="card-title">Settling up</h2>
+    <div id="plan"></div>
+</section>
+
+<!-- PLAYERS -->
+<section class="card">
+    <h2 class="card-title">Players</h2>
+    <div class="field">
+        <div class="row2">
+            <input type="text" id="pname" placeholder="Names, comma separated" autocomplete="off">
+            <button class="btn" style="flex:0 0 84px" id="addPlayerBtn">Add</button>
+        </div>
+    </div>
+    <div class="chips" id="playerChips"></div>
+    <div class="err" id="pErr"></div>
+</section>
+
+<!-- COMPOSER -->
+<section class="card">
+    <h2 class="card-title">Add to the round</h2>
+
+    <div class="seg" role="tablist">
+        <button role="tab" data-mode="expense" aria-selected="true">🛒 Expense</button>
+        <button role="tab" data-mode="bet" aria-selected="false">🎯 Bet</button>
+        <button role="tab" data-mode="cash" aria-selected="false">💵 Paid back</button>
+    </div>
+
+    <p class="hint" id="hint"></p>
+
+    <div class="field">
+        <div class="row2">
+            <input type="text" id="desc" placeholder="What for?" autocomplete="off">
+            <input type="number" id="amt" placeholder="Amount" step="0.01" inputmode="decimal">
+        </div>
+    </div>
+
+    <div class="field">
+        <label id="lblA" for="selA">Who paid</label>
+        <select id="selA"></select>
+    </div>
+
+    <div class="field" id="fieldB" hidden>
+        <label id="lblB" for="selB">To</label>
+        <select id="selB"></select>
+    </div>
+
+    <div class="field" id="fieldSplit">
+        <div class="split-head">
+            <label style="margin:0">Covers</label>
+            <button class="linkbtn" id="allNoneBtn" type="button">select none</button>
+        </div>
+        <div class="chips" id="splitChips"></div>
+    </div>
+
+    <button class="btn" id="addEntryBtn">Add to round</button>
+    <div class="err" id="eErr"></div>
+</section>
+
+<!-- ENTRIES -->
+<section class="card" id="entriesCard" hidden>
+    <h2 class="card-title">The round so far</h2>
+    <div id="entries"></div>
+</section>
+
+<!-- SHARE — the end of the flow -->
+<section class="card" id="shareCard">
+    <h2 class="card-title">Share the result</h2>
+
+    <label class="opt">
+        <input type="checkbox" id="optWhy" checked>
+        Include how each number was worked out
+    </label>
+
+    <div class="share-preview" id="sharePreview"></div>
+
+    <button class="btn wa" id="waBtn">💬 Send to WhatsApp</button>
+    <div class="btn-row" style="margin-top:8px">
+        <button class="btn ghost" id="copyBtn">Copy text</button>
+        <button class="btn ghost" id="clearBtn">Clear round</button>
+    </div>
+</section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const EPS = 0.005;
+const STORE = 'caddie-round-v1';
+
+const HINTS = {
+    expense: "One person paid for the group. Tick everyone the cost covers — they each carry an equal share.",
+    bet: "A settled side bet. The loser goes down by the amount, the winner goes up by the same.",
+    cash: "Money that already changed hands — someone squaring up early. It reduces what the giver owes."
+};
+
+let state = { cur: '₹', players: [], entries: [], seq: 0 };
+let mode = 'expense';
+let openDrawer = null;
+let derived = null;
+
+/* ---------------- persistence ---------------- */
+function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+}
+
+function load() {
+    try {
+        const raw = localStorage.getItem(STORE);
+        if (raw) {
+            const p = JSON.parse(raw);
+            if (p && Array.isArray(p.players) && Array.isArray(p.entries)) state = p;
+        }
+    } catch (e) {}
+
+    try {
+        const t = localStorage.getItem(STORE + '-theme');
+        if (t) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+}
+
+/* ---------------- helpers ---------------- */
+const $ = id => document.getElementById(id);
+
+function money(n) {
+    return state.cur + Math.abs(n).toLocaleString(undefined,
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function signed(n) {
+    if (Math.abs(n) < EPS) return money(0);
+    return (n > 0 ? '+' : '−') + money(n);
+}
+
+function esc(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 1900);
+}
+
+function showErr(id, msg) {
+    const el = $(id);
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function clearErr(id) { $(id).style.display = 'none'; }
+
+/* ---------------- the maths ----------------
+   Every entry is "someone is up by X, someone else is down by X".
+   An expense splits the down side N ways; a bet and a payback are 1-to-1.   */
+function compute() {
+    const names = state.players;
+    const parts = {};
+    names.forEach(n => parts[n] = {
+        paid: 0, share: 0, betWon: 0, betLost: 0, gave: 0, got: 0
+    });
+
+    const owes = {};  // owes["A|B"] = gross A owes B, pre-netting
+
+    state.entries.forEach(en => {
+        const each = en.amount / en.with.length;
+
+        if (en.kind === 'expense') parts[en.from].paid += en.amount;
+        else if (en.kind === 'bet') parts[en.from].betWon += en.amount;
+        else parts[en.from].gave += en.amount;
+
+        en.with.forEach(p => {
+            if (!parts[p]) return;
+            if (en.kind === 'expense') parts[p].share += each;
+            else if (en.kind === 'bet') parts[p].betLost += each;
+            else parts[p].got += each;
+
+            if (p !== en.from) {
+                const k = p + '|' + en.from;
+                owes[k] = (owes[k] || 0) + each;
+            }
+        });
+    });
+
+    const net = {};
+    names.forEach(n => {
+        const c = parts[n];
+        net[n] = c.paid - c.share + c.betWon - c.betLost + c.gave - c.got;
+        if (Math.abs(net[n]) < EPS) net[n] = 0;
+    });
+
+    // net each pair off against each other
+    const direct = [];
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            const a = names[i], b = names[j];
+            const d = (owes[a + '|' + b] || 0) - (owes[b + '|' + a] || 0);
+            if (d > EPS) direct.push({ from: a, to: b, amount: d });
+            else if (d < -EPS) direct.push({ from: b, to: a, amount: -d });
+        }
+    }
+
+    // greedy: largest debtor against largest creditor
+    const down = names.filter(n => net[n] < -EPS).map(n => ({ n, v: -net[n] }))
+                      .sort((x, y) => y.v - x.v);
+    const up = names.filter(n => net[n] > EPS).map(n => ({ n, v: net[n] }))
+                    .sort((x, y) => y.v - x.v);
+
+    const plan = [];
+    let d = 0, c = 0;
+    while (d < down.length && c < up.length) {
+        const pay = Math.min(down[d].v, up[c].v);
+        plan.push({ from: down[d].n, to: up[c].n, amount: pay });
+        down[d].v -= pay;
+        up[c].v -= pay;
+        if (down[d].v < EPS) d++;
+        if (up[c].v < EPS) c++;
+    }
+
+    const moves = {};
+    names.forEach(n => moves[n] = { pays: [], gets: [] });
+    plan.forEach(t => {
+        moves[t.from].pays.push({ who: t.to, amount: t.amount });
+        moves[t.to].gets.push({ who: t.from, amount: t.amount });
+    });
+
+    const rows = names.map(n => ({ name: n, net: net[n], parts: parts[n], moves: moves[n] }))
+                      .sort((a, b) => b.net - a.net);
+
+    return { rows, plan, direct };
+}
+
+/* ---------------- render: the standing ---------------- */
+function componentLines(p) {
+    return [
+        ['Paid for the group', p.paid],
+        ['Own share', -p.share],
+        ['Bets won', p.betWon],
+        ['Bets lost', -p.betLost],
+        ['Paid back to others', p.gave],
+        ['Received back', -p.got]
+    ].filter(r => Math.abs(r[1]) >= EPS);
+}
+
+function renderStanding() {
+    const el = $('standing');
+    const { rows } = derived;
+
+    if (state.players.length === 0) {
+        el.innerHTML = `<p class="empty">Add players below and the standing appears here —<br>updating with every entry.</p>`;
+        return;
+    }
+
+    const anyMoney = rows.some(r => Math.abs(r.net) >= EPS);
+    let html = '';
+
+    rows.forEach(r => {
+        const cls = r.net > EPS ? 'pos' : (r.net < -EPS ? 'neg' : 'zero');
+        const word = cls === 'pos' ? 'is owed' : (cls === 'neg' ? 'owes' : 'square');
+
+        html += `
+            <div class="stand-row" data-name="${esc(r.name)}" tabindex="0" role="button"
+                 aria-expanded="${openDrawer === r.name}">
+                <span class="stand-name">${esc(r.name)}</span>
+                <span class="pill ${cls}">${word}</span>
+                <span class="stand-amt ${cls === 'zero' ? 'is-zero' : ''}">${cls === 'zero' ? '—' : money(r.net)}</span>
+            </div>`;
+
+        if (openDrawer === r.name) {
+            const lines = componentLines(r.parts);
+            const act = r.moves.pays.length
+                ? 'Pays ' + r.moves.pays.map(m => `<b>${money(m.amount)}</b> to <b>${esc(m.who)}</b>`).join(' and ')
+                : (r.moves.gets.length
+                    ? 'Collects ' + r.moves.gets.map(m => `<b>${money(m.amount)}</b> from <b>${esc(m.who)}</b>`).join(' and ')
+                    : 'Nothing to do.');
+
+            html += `<div class="drawer">
+                ${lines.map(l => `
+                    <div class="bd-row">
+                        <span class="bd-label">${l[0]}</span>
+                        <span class="bd-val">${signed(l[1])}</span>
+                    </div>`).join('')
+                || '<div class="bd-row"><span class="bd-label">Nothing recorded yet</span><span class="bd-val">—</span></div>'}
+                <div class="bd-row total">
+                    <span class="bd-label">Net</span>
+                    <span class="bd-val">${signed(r.net)}</span>
+                </div>
+                <div class="drawer-action">${act}</div>
+            </div>`;
+        }
+    });
+
+    html += `<p class="chart-foot">${anyMoney
+        ? 'Tap a name to see how its number was built.'
+        : 'Nothing has moved yet — everyone is square.'}</p>`;
+
+    el.innerHTML = html;
+}
+
+/* ---------------- render: the plan ---------------- */
+function renderPlan() {
+    const el = $('plan');
+    const { plan, direct } = derived;
+
+    if (state.players.length === 0 || state.entries.length === 0) {
+        el.innerHTML = `<p class="empty">No entries yet.</p>`;
+        return;
+    }
+
+    if (plan.length === 0) {
+        el.innerHTML = `<div class="square">✓ All square — nobody owes anybody</div>`;
+        return;
+    }
+
+    const n = plan.length;
+    let html = `<div class="plan-head">${n} payment${n > 1 ? 's' : ''} and you're done</div>`;
+
+    html += plan.map(t => `
+        <div class="pay">
+            <div class="pay-who"><b>${esc(t.from)}</b><span class="arr">→</span><b>${esc(t.to)}</b></div>
+            <div class="pay-amt">${money(t.amount)}</div>
+        </div>`).join('');
+
+    if (direct.length > n) {
+        html += `<p class="chart-foot">Squaring up pair by pair would take ${direct.length} transfers.
+                 These ${n} move the same money with fewer hand-offs — everyone lands on the same net.</p>`;
+    }
+
+    el.innerHTML = html;
+}
+
+/* ---------------- render: players & composer ---------------- */
+function renderPlayers() {
+    $('playerChips').innerHTML = state.players.length === 0
+        ? `<span style="font-size:13px;color:var(--text-muted)">Nobody yet.</span>`
+        : state.players.map(p => `
+            <button class="chip" data-drop="${esc(p)}" aria-pressed="false">
+                ${esc(p)}<span class="chip-x">✕</span>
+            </button>`).join('');
+
+    const opts = state.players.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    $('selA').innerHTML = opts;
+    $('selB').innerHTML = opts;
+
+    $('splitChips').innerHTML = state.players.length === 0
+        ? `<span style="font-size:13px;color:var(--text-muted)">Add players first.</span>`
+        : state.players.map(p => `
+            <button class="chip" data-split="${esc(p)}" aria-pressed="true">${esc(p)}</button>`).join('');
+}
+
+function renderEntries() {
+    const card = $('entriesCard');
+    if (state.entries.length === 0) { card.hidden = true; return; }
+    card.hidden = false;
+
+    $('entries').innerHTML = state.entries.slice().reverse().map(en => {
+        let main, sub;
+        if (en.kind === 'expense') {
+            main = `🛒 <b>${esc(en.desc)}</b> — ${esc(en.from)} paid`;
+            sub = `Covers ${en.with.length}: ${en.with.map(esc).join(', ')} · ${money(en.amount / en.with.length)} each`;
+        } else if (en.kind === 'bet') {
+            main = `🎯 <b>${esc(en.desc)}</b>`;
+            sub = `${esc(en.with[0])} lost to ${esc(en.from)}`;
+        } else {
+            main = `💵 <b>${esc(en.desc)}</b>`;
+            sub = `${esc(en.from)} paid ${esc(en.with[0])} back`;
+        }
+
+        return `<div class="entry">
+            <div>
+                <div class="entry-main">${main}</div>
+                <div class="entry-sub">${sub}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span class="entry-amt">${money(en.amount)}</span>
+                <button class="del" data-del="${en.id}" aria-label="Delete entry">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function renderAll() {
+    derived = compute();
+    renderStanding();
+    renderPlan();
+    renderEntries();
+    renderShare();
+}
+
+/* ---------------- composer behaviour ---------------- */
+function applyMode() {
+    document.querySelectorAll('.seg button').forEach(b =>
+        b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+
+    $('hint').textContent = HINTS[mode];
+
+    const isExpense = mode === 'expense';
+    $('fieldSplit').hidden = !isExpense;
+    $('fieldB').hidden = isExpense;
+
+    $('lblA').textContent = isExpense ? 'Who paid' : (mode === 'bet' ? 'Winner' : 'Who paid it back');
+    $('lblB').textContent = mode === 'bet' ? 'Loser' : 'Paid to';
+
+    $('desc').placeholder = isExpense ? 'What for? (e.g. green fees)'
+                          : (mode === 'bet' ? 'Which bet? (e.g. skins)' : 'Note (optional)');
+
+    $('addEntryBtn').textContent = isExpense ? 'Add expense'
+                                 : (mode === 'bet' ? 'Add bet' : 'Record payback');
+    clearErr('eErr');
+}
+
+function splitSelection() {
+    return Array.from(document.querySelectorAll('[data-split][aria-pressed="true"]'))
+                .map(b => b.dataset.split);
+}
+
+function addPlayers() {
+    clearErr('pErr');
+    const raw = $('pname').value.trim();
+    if (!raw) return showErr('pErr', 'Type a name first.');
+
+    const dupes = [];
+    let added = 0;
+
+    raw.split(',').map(s => s.trim()).filter(Boolean).forEach(name => {
+        if (state.players.some(p => p.toLowerCase() === name.toLowerCase())) dupes.push(name);
+        else { state.players.push(name); added++; }
+    });
+
+    if (dupes.length) showErr('pErr', `Already in: ${dupes.join(', ')}`);
+    if (added) {
+        $('pname').value = '';
+        renderPlayers();
+        renderAll();
+        save();
+    }
+}
+
+function dropPlayer(name) {
+    state.players = state.players.filter(p => p !== name);
+    state.entries = state.entries
+        .filter(en => en.from !== name)
+        .map(en => ({ ...en, with: en.with.filter(p => p !== name) }))
+        .filter(en => en.with.length > 0);
+
+    if (openDrawer === name) openDrawer = null;
+    renderPlayers();
+    renderAll();
+    save();
+}
+
+function addEntry() {
+    clearErr('eErr');
+    const amount = parseFloat($('amt').value);
+    const from = $('selA').value;
+    const to = $('selB').value;
+    const typed = $('desc').value.trim();
+
+    if (state.players.length < 2) return showErr('eErr', 'Add at least two players first.');
+    if (!(amount > 0)) return showErr('eErr', 'Enter an amount above zero.');
+
+    let entry;
+
+    if (mode === 'expense') {
+        const withWho = splitSelection();
+        if (!from) return showErr('eErr', 'Pick who paid.');
+        if (withWho.length === 0) return showErr('eErr', 'Pick at least one person it covers.');
+        entry = { kind: 'expense', desc: typed || 'Shared expense', from, with: withWho, amount };
+
+    } else {
+        if (!from || !to) return showErr('eErr', 'Pick both people.');
+        if (from === to) return showErr('eErr', 'Pick two different people.');
+        entry = {
+            kind: mode,
+            desc: typed || (mode === 'bet' ? 'Bet' : 'Paid back'),
+            from, with: [to], amount
+        };
+    }
+
+    entry.id = ++state.seq;
+    state.entries.push(entry);
+
+    $('amt').value = '';
+    $('desc').value = '';
+
+    renderAll();
+    save();
+    toast('Added');
+}
+
+/* The shareable summary. WhatsApp renders *bold* between asterisks. */
+function summaryText() {
+    const { rows, plan } = derived;
+    const withWhy = $('optWhy').checked;
+
+    if (state.players.length === 0 || state.entries.length === 0) {
+        return 'Nothing in this round yet.';
+    }
+
+    let s = '⛳ *Golf Round — Settlement*\n\n';
+
+    if (plan.length === 0) {
+        s += '✅ *All square* — nobody owes anybody.\n';
+    } else {
+        s += `*Pay these ${plan.length} and everyone is square:*\n`;
+        plan.forEach(t => s += `• *${t.from}* ➔ *${t.to}* — ${money(t.amount)}\n`);
+    }
+
+    s += '\n*Where everyone stands*\n';
+    rows.forEach(r => {
+        if (Math.abs(r.net) < EPS) s += `• ${r.name} — square\n`;
+        else s += `• ${r.name} — ${r.net > 0 ? 'is owed' : 'owes'} ${money(r.net)}\n`;
+    });
+
+    if (withWhy) {
+        s += '\n*How that was worked out*\n';
+        rows.forEach(r => {
+            const lines = componentLines(r.parts);
+            if (lines.length === 0) return;
+            s += `\n👤 *${r.name}*\n`;
+            lines.forEach(l => s += `   ${signed(l[1])}  ${l[0].toLowerCase()}\n`);
+            s += `   = ${Math.abs(r.net) < EPS ? 'square' : signed(r.net)}\n`;
+        });
+    }
+
+    const spend = state.entries
+        .filter(e => e.kind === 'expense')
+        .reduce((t, e) => t + e.amount, 0);
+
+    if (spend > 0) s += `\n_Shared spend this round: ${money(spend)}_`;
+
+    return s;
+}
+
+function renderShare() {
+    const text = summaryText();
+
+    // preview mirrors WhatsApp's *bold* rendering
+    $('sharePreview').innerHTML = esc(text)
+        .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+        .replace(/_([^_\n]+)_/g, '<i>$1</i>');
+
+    const empty = state.entries.length === 0;
+    $('waBtn').disabled = empty;
+    $('copyBtn').disabled = empty;
+    $('waBtn').style.opacity = empty ? .5 : 1;
+}
+
+/* ---------------- wiring ---------------- */
+$('addPlayerBtn').addEventListener('click', addPlayers);
+$('pname').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayers(); });
+$('addEntryBtn').addEventListener('click', addEntry);
+$('amt').addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
+
+$('playerChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-drop]');
+    if (b) dropPlayer(b.dataset.drop);
+});
+
+$('splitChips').addEventListener('click', e => {
+    const b = e.target.closest('[data-split]');
+    if (!b) return;
+    b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+});
+
+$('allNoneBtn').addEventListener('click', () => {
+    const chips = Array.from(document.querySelectorAll('[data-split]'));
+    const allOn = chips.every(c => c.getAttribute('aria-pressed') === 'true');
+    chips.forEach(c => c.setAttribute('aria-pressed', String(!allOn)));
+    $('allNoneBtn').textContent = allOn ? 'select all' : 'select none';
+});
+
+document.querySelector('.seg').addEventListener('click', e => {
+    const b = e.target.closest('[data-mode]');
+    if (!b) return;
+    mode = b.dataset.mode;
+    applyMode();
+});
+
+$('entries').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]');
+    if (!b) return;
+    state.entries = state.entries.filter(en => en.id !== Number(b.dataset.del));
+    renderAll();
+    save();
+});
+
+// tap a name to open its breakdown
+const standing = $('standing');
+
+function toggleDrawer(row) {
+    openDrawer = openDrawer === row.dataset.name ? null : row.dataset.name;
+    renderStanding();
+}
+
+standing.addEventListener('click', e => {
+    const row = e.target.closest('.stand-row');
+    if (row) toggleDrawer(row);
+});
+
+standing.addEventListener('keydown', e => {
+    const row = e.target.closest('.stand-row');
+    if (!row || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    toggleDrawer(row);
+});
+
+$('cur').addEventListener('input', () => {
+    state.cur = $('cur').value.trim() || '₹';
+    renderAll();
+    save();
+});
+
+$('themeBtn').addEventListener('click', () => {
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem(STORE + '-theme', next); } catch (e) {}
+});
+
+$('optWhy').addEventListener('change', renderShare);
+
+$('waBtn').addEventListener('click', () => {
+    if (state.entries.length === 0) return;
+    window.open('https://wa.me/?text=' + encodeURIComponent(summaryText()), '_blank');
+});
+
+$('copyBtn').addEventListener('click', async () => {
+    if (state.entries.length === 0) return;
+    try {
+        await navigator.clipboard.writeText(summaryText());
+        toast('Summary copied');
+    } catch (e) {
+        toast('Copy failed — select the text above');
+    }
+});
+
+$('clearBtn').addEventListener('click', () => {
+    if (state.entries.length && !confirm('Clear all players and entries?')) return;
+    state = { cur: state.cur, players: [], entries: [], seq: 0 };
+    openDrawer = null;
+    renderPlayers();
+    renderAll();
+    save();
+    toast('Cleared');
+});
+
+/* ---------------- boot ---------------- */
+load();
+$('cur').value = state.cur;
+applyMode();
+renderPlayers();
+renderAll();
+</script>
+
+</body>
+</html>
