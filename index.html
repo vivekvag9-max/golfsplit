@@ -21,11 +21,17 @@
 
         * { box-sizing: border-box; }
 
+        /* iOS treats two quick taps as zoom; this keeps fast keypad entry from
+           zooming the page, while leaving pinch-to-zoom alone. */
+        button, .key, .pick, .preset, .type-tab, .checkbox-item, label {
+            touch-action: manipulation;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f7f6;
             margin: 0;
-            padding: 15px;
+            padding: 10px;
             color: var(--ink);
         }
 
@@ -33,48 +39,28 @@
             max-width: 520px;
             margin: 0 auto;
             background: white;
-            padding: 20px;
+            padding: 14px;
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        h1 { color: var(--green); margin: 0; font-size: 1.5rem; }
-
-        .currency-picker {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 13px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .currency-picker input {
-            width: 48px;
-            padding: 6px;
-            text-align: center;
-            font-weight: bold;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+        h1 {
+            color: var(--green);
+            margin: 0 0 12px 0;
+            font-size: 1.35rem;
+            white-space: nowrap;
         }
 
         .section {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
 
         h3 {
             color: var(--green-dark);
-            font-size: 0.95rem;
-            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            margin: 0 0 8px 0;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -129,14 +115,14 @@
 
         /* Explains what each entry type means before you use it */
         .mode-hint {
-            font-size: 12.5px;
+            font-size: 11.5px;
             color: var(--muted);
             background: #fafafa;
             border-left: 3px solid var(--green-line);
-            padding: 8px 10px;
+            padding: 6px 8px;
             border-radius: 0 6px 6px 0;
-            margin-bottom: 12px;
-            line-height: 1.45;
+            margin-bottom: 10px;
+            line-height: 1.4;
         }
 
         .btn-main { width: 100%; background: var(--green-dark); font-size: 17px; padding: 15px; margin-top: 10px; }
@@ -184,6 +170,18 @@
         .preset { background: #f5f5f5; }
 
         .pick-empty { font-size: 12px; color: #888; }
+
+        /* sits in the chip row and matches a chip's height.
+           Selector must outrank the generic input[type="text"] rule above. */
+        input[type="text"].preset-input {
+            flex: 0 0 auto;
+            width: 138px;
+            min-width: 0;
+            padding: 5px 12px;
+            border: 1px solid var(--green);
+            border-radius: 20px;
+            font-weight: 600;
+        }
 
         /* ---------- in-app amount keypad ---------- */
         .amount-block {
@@ -478,19 +476,13 @@
 <body>
 
 <div class="container">
-    <div class="header-bar">
-        <h1>⛳ Golf Settler</h1>
-        <div class="currency-picker">
-            <span>Currency:</span>
-            <input type="text" id="currencySymbol" value="₹" maxlength="5" onchange="updateCurrency()">
-        </div>
-    </div>
+    <h1>⛳ Golf Settler</h1>
 
     <!-- Step 1: Players -->
     <div class="section">
-        <h3>1. Add Players (Single or Comma Separated)</h3>
+        <h3>1. Players</h3>
         <div class="input-group">
-            <input type="text" id="playerName" placeholder="Names (e.g. Alex, Bob, Charlie)" autocomplete="off" onkeydown="if(event.key==='Enter'||event.keyCode===13){addPlayers();}">
+            <input type="text" id="playerName" placeholder="Names, spaces or commas" autocomplete="off" autocapitalize="words" onkeydown="if(event.key==='Enter'||event.keyCode===13){addPlayers();}">
             <button type="button" onclick="addPlayers()">Add</button>
         </div>
         <div id="playerError" class="error-msg"></div>
@@ -510,6 +502,34 @@
         <div class="mode-hint" id="modeHint"></div>
 
         <div>
+            <!-- what it was for -->
+            <div id="whatExpense">
+                <div class="pick-label">What was it for?</div>
+                <div class="pick-row" id="typePick">
+                    <button type="button" class="preset" data-desc="Booking" aria-pressed="false">Booking</button>
+                    <button type="button" class="preset" data-desc="Pro shop" aria-pressed="false">Pro shop</button>
+                    <button type="button" class="preset" data-desc="Cart/caddy" aria-pressed="false">Cart/caddy</button>
+                    <button type="button" class="preset" data-desc="Food" aria-pressed="false">Food</button>
+                    <button type="button" class="preset" data-desc="Caddy tip" aria-pressed="false">Caddy tip</button>
+                    <button type="button" class="preset" data-desc="Misc" aria-pressed="false">Misc</button>
+                    <input type="text" id="expenseDesc" class="preset-input" placeholder="Type it…" autocomplete="off" style="display: none;">
+                </div>
+            </div>
+
+            <div id="whatBet" style="display: none;">
+                <div class="pick-label">Which bet?</div>
+                <div class="input-group">
+                    <input type="text" id="betDesc" placeholder="e.g. Skins, Hole 9" autocomplete="off" style="flex: 1 1 100%;">
+                </div>
+            </div>
+
+            <div id="whatCash" style="display: none;">
+                <div class="pick-label">Note</div>
+                <div class="input-group">
+                    <input type="text" id="cashDesc" placeholder="e.g. Paid Bob back" autocomplete="off" style="flex: 1 1 100%;">
+                </div>
+            </div>
+
             <div class="amount-block">
                 <div class="amount-head">
                     <span class="pick-label" style="margin:0;">Amount</span>
@@ -531,19 +551,8 @@
                 </div>
             </div>
 
-            <div id="fieldsExpense">
-                <div class="pick-label">What was it for?</div>
-                <div class="pick-row" id="typePick">
-                    <button type="button" class="preset" data-desc="Booking" aria-pressed="false">Booking</button>
-                    <button type="button" class="preset" data-desc="Pro shop" aria-pressed="false">Pro shop</button>
-                    <button type="button" class="preset" data-desc="Cart/caddy" aria-pressed="false">Cart/caddy</button>
-                    <button type="button" class="preset" data-desc="Food" aria-pressed="false">Food</button>
-                    <button type="button" class="preset" data-desc="Caddy tip" aria-pressed="false">Caddy tip</button>
-                    <button type="button" class="preset" data-desc="Misc" aria-pressed="false">Misc</button>
-                </div>
-                <div class="input-group">
-                    <input type="text" id="expenseDesc" placeholder="Or type your own" autocomplete="off" style="flex: 1 1 100%;">
-                </div>
+            <!-- who it involves -->
+            <div id="whoExpense">
                 <div class="pick-label">Who paid?</div>
                 <div class="pick-row" id="payerPick"></div>
                 <div style="font-size: 13px; font-weight: bold; color: #555;">Split Between:</div>
@@ -552,20 +561,14 @@
                 </div>
             </div>
 
-            <div id="fieldsBet" style="display: none;">
-                <div class="input-group">
-                    <input type="text" id="betDesc" placeholder="Bet Name (e.g. Skins, Hole 9)" autocomplete="off" style="flex: 1 1 100%;">
-                </div>
+            <div id="whoBet" style="display: none;">
                 <div class="pick-label">Winner (gets paid)</div>
                 <div class="pick-row" id="betWinnerPick"></div>
                 <div class="pick-label">Loser (owes money)</div>
                 <div class="pick-row" id="betLoserPick"></div>
             </div>
 
-            <div id="fieldsCash" style="display: none;">
-                <div class="input-group">
-                    <input type="text" id="cashDesc" placeholder="Note (e.g. Paid Bob back)" autocomplete="off" style="flex: 1 1 100%;">
-                </div>
+            <div id="whoCash" style="display: none;">
                 <div class="pick-label">Who handed the cash over</div>
                 <div class="pick-row" id="cashGiverPick"></div>
                 <div class="pick-label">Who received it</div>
@@ -695,21 +698,34 @@
 
     // Preset expense types. Tapping one fills the description box; typing
     // still works, and a typed match lights the matching chip.
+    let descChoice = '';   // '' | a preset label | 'Misc'
+
+    // Misc is the free-text option: picking it reveals a box in the chip row.
     function syncPresets() {
-        const typed = (document.getElementById('expenseDesc').value || '').trim().toLowerCase();
         document.querySelectorAll('#typePick .preset').forEach(b => {
-            b.setAttribute('aria-pressed', String(b.dataset.desc.toLowerCase() === typed));
+            b.setAttribute('aria-pressed', String(b.dataset.desc === descChoice));
         });
+
+        const inp = document.getElementById('expenseDesc');
+        const misc = (descChoice === 'Misc');
+        inp.style.display = misc ? 'block' : 'none';
+        if (!misc) inp.value = '';
+    }
+
+    function currentDesc() {
+        if (descChoice === 'Misc') {
+            return document.getElementById('expenseDesc').value.trim() || 'Misc';
+        }
+        return descChoice;
     }
 
     document.addEventListener('click', e => {
         const b = e.target.closest('.preset');
         if (!b) return;
-        const input = document.getElementById('expenseDesc');
-        // tapping the lit chip again clears the box
-        const cleared = input.value.trim() === b.dataset.desc;
-        input.value = cleared ? '' : b.dataset.desc;
+        // tapping the lit chip again clears the choice
+        descChoice = (descChoice === b.dataset.desc) ? '' : b.dataset.desc;
         syncPresets();
+        if (descChoice === 'Misc') document.getElementById('expenseDesc').focus();
     });
 
     function renderPickers() {
@@ -753,10 +769,8 @@
 
         players = saved.players;
         expenses = saved.expenses;
-        currencySymbol = saved.cur || '₹';
         idCounter = saved.seq || expenses.reduce((m, e) => Math.max(m, e.id || 0), 0);
 
-        document.getElementById('currencySymbol').value = currencySymbol;
         renderAmount();
         updatePlayerUI();
         renderExpenses();
@@ -846,23 +860,17 @@
         ].filter(r => Math.abs(r[1]) >= EPS);
     }
 
-    function updateCurrency() {
-        currencySymbol = document.getElementById('currencySymbol').value.trim() || '₹';
-        renderAmount();
-        renderExpenses();
-        if (document.getElementById('results').style.display === 'block') calculateSettlement(false);
-        save();
-    }
-
     function setMode(mode) {
         currentMode = mode;
         document.getElementById('tabExpense').className = 'type-tab ' + (mode === 'expense' ? 'active' : '');
         document.getElementById('tabBet').className = 'type-tab ' + (mode === 'bet' ? 'active' : '');
         document.getElementById('tabCash').className = 'type-tab ' + (mode === 'cash' ? 'active' : '');
 
-        document.getElementById('fieldsExpense').style.display = (mode === 'expense' ? 'block' : 'none');
-        document.getElementById('fieldsBet').style.display = (mode === 'bet' ? 'block' : 'none');
-        document.getElementById('fieldsCash').style.display = (mode === 'cash' ? 'block' : 'none');
+        [['Expense', 'expense'], ['Bet', 'bet'], ['Cash', 'cash']].forEach(([suffix, m]) => {
+            const on = (mode === m) ? 'block' : 'none';
+            document.getElementById('what' + suffix).style.display = on;
+            document.getElementById('who' + suffix).style.display = on;
+        });
 
         document.getElementById('modeHint').innerText = MODE_HINTS[mode];
 
@@ -885,7 +893,11 @@
             return;
         }
 
-        const names = rawValue.split(',').map(n => n.trim()).filter(n => n.length > 0);
+        // Commas win when present, so "Bob Smith, Guri" keeps full names.
+        // With no comma, split on spaces: "Ranjit Anand Guri" adds three.
+        const names = (rawValue.includes(',') ? rawValue.split(',') : rawValue.split(/\s+/))
+            .map(n => n.trim())
+            .filter(n => n.length > 0);
         let addedCount = 0;
         let duplicates = [];
 
@@ -954,7 +966,7 @@
         const fail = msg => { errDiv.innerText = msg; errDiv.style.display = 'block'; };
 
         if (currentMode === 'expense') {
-            const desc = document.getElementById('expenseDesc').value.trim() || 'Shared Expense';
+            const desc = currentDesc() || 'Shared Expense';
             const payer = picks.payer;
             const amount = amountValue();
             const checkboxes = document.querySelectorAll('.split-check:checked');
@@ -969,7 +981,7 @@
             });
 
             clearAmount();
-            document.getElementById('expenseDesc').value = '';
+            descChoice = '';
             syncPresets();
 
         } else if (currentMode === 'bet') {
@@ -1609,6 +1621,7 @@
 
         ['playerName', 'expenseDesc', 'betDesc', 'cashDesc']
             .forEach(id => document.getElementById(id).value = '');
+        descChoice = '';
         clearAmount();
 
         document.getElementById('playerError').style.display = 'none';
@@ -1627,7 +1640,6 @@
     }
 
     setMode('expense');
-    document.getElementById('expenseDesc').addEventListener('input', syncPresets);
 
     document.getElementById('keypad').addEventListener('click', e => {
         const b = e.target.closest('.key');
