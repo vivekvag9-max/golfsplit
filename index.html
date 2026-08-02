@@ -54,6 +54,7 @@
         .top-bar {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
             margin-bottom: 14px;
             padding-bottom: 12px;
@@ -271,6 +272,95 @@
         .btn-pay:active { background: #0093c4; }
 
         .pay-right { display: flex; align-items: center; gap: 8px; }
+
+        .beta {
+            display: inline-block;
+            background: var(--amber); color: white;
+            font-size: 9.5px; font-weight: 800;
+            letter-spacing: .04em; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 10px;
+            vertical-align: 1px; margin-left: 4px;
+        }
+
+        /* ---------- how-to-use panel ---------- */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 120;
+            background: rgba(0,0,0,.55);
+            align-items: center; justify-content: center;
+            padding: 12px;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: white;
+            width: 100%; max-width: 520px;
+            max-height: 88vh;
+            border-radius: 14px;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid #eee;
+            flex: 0 0 auto;
+        }
+
+        .modal-head h2 {
+            margin: 0; font-size: 1.05rem; color: var(--green-dark);
+        }
+
+        .modal-close {
+            background: none; border: none; color: #888;
+            font-size: 20px; padding: 0 4px; cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 14px 16px 20px 16px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 13.5px;
+            line-height: 1.55;
+            color: #333;
+        }
+
+        .modal-body h3 {
+            font-size: 0.8rem; margin: 18px 0 6px 0;
+            color: var(--green-dark);
+        }
+
+        .modal-body h3:first-child { margin-top: 0; }
+
+        .modal-body p { margin: 0 0 8px 0; }
+        .modal-body ul { margin: 0 0 8px 0; padding-left: 18px; }
+        .modal-body li { margin-bottom: 5px; }
+
+        .modal-body .kbd {
+            background: #eef2f0; border-radius: 4px;
+            padding: 1px 5px; font-size: 12px; font-weight: 700;
+        }
+
+        .step {
+            display: flex; gap: 10px; margin-bottom: 10px;
+        }
+
+        .step-n {
+            flex: 0 0 22px; height: 22px;
+            background: var(--green); color: white;
+            border-radius: 50%; text-align: center;
+            font-size: 12px; font-weight: 800; line-height: 22px;
+        }
+
+        .beta-box {
+            background: #fff4e5;
+            border: 1px solid #ffcc80;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 6px;
+        }
 
         /* ---------- QR scanner ---------- */
         .btn-scan {
@@ -652,7 +742,8 @@
             <span>Date</span>
             <input type="date" id="roundDate" onchange="onDateChange()">
         </label>
-        <button type="button" class="btn-clear-top" onclick="resetAll()">Clear &amp; start over</button>
+        <button type="button" class="btn-clear-top" onclick="openHelp()">How to use</button>
+        <button type="button" class="btn-clear-top" onclick="resetAll()">Clear</button>
     </div>
 
     <!-- Step 1: Players -->
@@ -665,7 +756,7 @@
         <div id="playerError" class="error-msg"></div>
         <div id="playerList" style="margin-top: 8px;"></div>
         <details class="contacts-box" id="contactsBox" style="display: none;">
-            <summary>💳 Paytm / UPI details</summary>
+            <summary>💳 Paytm / UPI details <span class="beta">Beta</span></summary>
             <div class="note-sm">
                 Tap <b>Scan</b> to read their Paytm receive-money QR, or type a
                 <b>UPI ID</b> (e.g. <code>name@paytm</code>) or <b>10-digit mobile</b>.
@@ -835,6 +926,80 @@
     </div>
 
 
+</div>
+
+<div id="helpOverlay" class="modal-overlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="How to use">
+        <div class="modal-head">
+            <h2>⛳ How to use</h2>
+            <button type="button" class="modal-close" onclick="closeHelp()" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+
+            <p>Log what happened during the round, tap <b>Settle Up</b>, and it works out
+            the fewest payments that leave everyone square.</p>
+
+            <h3>Setting up</h3>
+            <div class="step"><div class="step-n">1</div><div>
+                <b>Set the date.</b> Defaults to today; tap it to change.
+            </div></div>
+            <div class="step"><div class="step-n">2</div><div>
+                <b>Add players.</b> Type names separated by spaces or commas —
+                <span class="kbd">Ravi Anand Guri</span> adds three. Use commas if
+                anyone has a two-word name.
+            </div></div>
+
+            <h3>Logging the round</h3>
+            <p>Every entry needs an amount, tapped on the keypad (whole rupees).
+            Then pick one of three kinds:</p>
+            <ul>
+                <li><b>🛒 Shared expense</b> — one person paid for the group. Tap what it
+                was for, who paid, then tick everyone it covers. The cost splits equally
+                between those ticked. Untick anyone who sat that one out.</li>
+                <li><b>🎯 Bet</b> — pick a winner, a loser, or just one of them. One-sided
+                entries let you record a team bet as separate lines. <b>Wins and losses
+                must cancel out</b> across the round; a running tally under the log tells
+                you if they don't.</li>
+                <li><b>💵 Cash handed over</b> — money that already changed hands, like
+                someone squaring up early. It reduces what the giver owes.</li>
+            </ul>
+            <p>Everything appears in the log below, where you can delete an entry with ✕.</p>
+
+            <h3>Reading the result</h3>
+            <ul>
+                <li><b>The plan</b> — who pays whom. Make these and everyone is square.</li>
+                <li><b>Line by line</b> — the spreadsheet view. A plain number is money
+                <b>in</b>, <b>(brackets)</b> are money <b>out</b>, and <b>NET</b> is each
+                person's bottom line. Positive means the group owes them.</li>
+                <li><b>Where each number comes from</b> — per person, the amounts that add
+                up to their net, so anyone can check their own figure.</li>
+                <li><b>Person-to-person detail</b> — the raw debts between each pair before
+                simplifying. The plan moves the same money with fewer hand-offs, which is
+                why the numbers differ.</li>
+            </ul>
+
+            <h3>Sharing</h3>
+            <p>Send the summary as <b>WhatsApp text</b>, or generate an <b>image card</b>
+            with the plan, the grid and each person's working.</p>
+
+            <h3>Saving</h3>
+            <p>The round is saved on this phone as you go, so a refresh or a locked screen
+            won't lose it. <b>Clear</b> wipes it and starts fresh.</p>
+
+            <h3>Paying by UPI <span class="beta">Beta</span></h3>
+            <div class="beta-box">
+                <p>Under Players you can store each person's <b>UPI ID</b>, once — it's kept
+                for future rounds. Then the plan shows a <b>Paytm</b> button, and the image
+                card carries a <b>QR code</b> per payment.</p>
+                <p style="margin-bottom:0"><b>Still being tested.</b> A UPI ID is reliable;
+                a plain mobile number is only a guess at <span class="kbd">number@paytm</span>
+                and fails if they don't use Paytm. Links need a phone with the app installed,
+                and QR scanning needs the app opened over https. <b>Always check the payee
+                and amount on your bank's own confirmation screen before paying.</b></p>
+            </div>
+
+        </div>
+    </div>
 </div>
 
 <div id="scanOverlay" class="scan-overlay">
@@ -1552,6 +1717,9 @@
     let scanStream = null;
     let scanTarget = '';
     let scanStop = false;
+
+    function openHelp() { document.getElementById('helpOverlay').classList.add('open'); }
+    function closeHelp() { document.getElementById('helpOverlay').classList.remove('open'); }
 
     function closeScanner() {
         scanStop = true;
@@ -2461,6 +2629,14 @@
     });
 
     document.getElementById('amountClear').addEventListener('click', clearAmount);
+
+    document.getElementById('helpOverlay').addEventListener('click', e => {
+        if (e.target.id === 'helpOverlay') closeHelp();      // tap the backdrop
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeHelp(); closeScanner(); }
+    });
 
     // a real keyboard still works on desktop
     document.addEventListener('keydown', e => {
