@@ -345,7 +345,7 @@
         }
 
         input[type="text"].bet-amt-input {
-            flex: 0 0 84px;
+            flex: 0 0 92px;
             min-width: 0;
             padding: 6px 9px;
             font-size: 16px; font-weight: 700;
@@ -516,8 +516,8 @@
         .amount-line .pick-label { flex: 0 0 auto; }
 
         input[type="text"]#amountInput {
-            flex: 1 1 auto; min-width: 0;
-            padding: 10px 12px;
+            flex: 0 0 124px; min-width: 0;
+            padding: 8px 10px;
             font-size: 20px; font-weight: 800;
             font-variant-numeric: tabular-nums;
             text-align: right;
@@ -819,8 +819,6 @@
 
         <div>
             <!-- what it was for -->
-            <div id="amountSlotTop"></div>
-
             <div id="whatExpense">
                 <div class="pick-label">Paid by</div>
                 <div class="pick-row" id="payerPick"></div>
@@ -835,6 +833,8 @@
                     <input type="text" id="expenseDesc" class="preset-input" placeholder="Type it…" autocomplete="off" style="display: none;">
                 </div>
 
+                <div id="amountSlotExpense"></div>
+
                 <div class="pick-label">Split across</div>
                 <div class="pick-row" id="splitChips"></div>
             </div>
@@ -847,22 +847,29 @@
                 </div>
                 <div class="bet-grid" id="betGrid"></div>
                 <div class="bet-sum" id="betSum"></div>
+                <div id="amountSlotBet"></div>
             </div>
 
             <div id="whatCash" style="display: none;">
+                <div class="pick-label">Who handed the cash over</div>
+                <div class="pick-row" id="cashGiverPick"></div>
+
+                <div id="amountSlotCash"></div>
+
                 <div class="pick-label">Note</div>
                 <div class="input-group">
                     <input type="text" id="cashDesc" placeholder="e.g. Paid Bob back" autocomplete="off" style="flex: 1 1 100%;">
                 </div>
-            </div>
 
-            <div id="amountSlotMid"></div>
+                <div class="pick-label">Who received it</div>
+                <div class="pick-row" id="cashReceiverPick"></div>
+            </div>
 
             <div class="amount-block">
                 <label class="amount-line">
                     <span class="pick-label" id="amountLabel" style="margin:0;">Amount</span>
                     <input type="text" id="amountInput" inputmode="numeric" pattern="[0-9]*"
-                           enterkeyhint="done" placeholder="0" autocomplete="off">
+                           maxlength="6" enterkeyhint="done" placeholder="0" autocomplete="off">
                 </label>
             </div>
 
@@ -870,12 +877,7 @@
 
             <div id="whoBet" style="display: none;"></div>
 
-            <div id="whoCash" style="display: none;">
-                <div class="pick-label">Who handed the cash over</div>
-                <div class="pick-row" id="cashGiverPick"></div>
-                <div class="pick-label">Who received it</div>
-                <div class="pick-row" id="cashReceiverPick"></div>
-            </div>
+            <div id="whoCash" style="display: none;"></div>
 
             <button type="button" style="width: 100%;" id="submitBtn" onclick="addTransaction()">Add Expense</button>
         </div>
@@ -1088,7 +1090,11 @@
 
     // ---- amount handling ----
     // Amounts use the device's own numeric keyboard. Digits only, whole rupees.
-    const digitsOnly = v => String(v || '').replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+    const MAX_DIGITS = 6;                       // up to 999,999
+    const digitsOnly = v => String(v || '')
+        .replace(/[^0-9]/g, '')
+        .replace(/^0+(?=\d)/, '')
+        .slice(0, MAX_DIGITS);
 
     function amountValue() {
         const el = document.getElementById('amountInput');
@@ -1139,7 +1145,7 @@
             const r = betRow(n);
             const cellHTML = (betMode === 'different')
                 ? `<input type="text" class="bet-amt-input" data-betamt="${esc(n)}"
-                          inputmode="numeric" pattern="[0-9]*" placeholder="0"
+                          inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="0"
                           autocomplete="off" value="${esc(r.amt)}">`
                 : '';
             return `
@@ -1451,10 +1457,13 @@
         document.getElementById('tabBet').className = 'type-tab ' + (mode === 'bet' ? 'active' : '');
         document.getElementById('tabCash').className = 'type-tab ' + (mode === 'cash' ? 'active' : '');
 
-        // Amount comes first on the expense tab; on the others it follows the
-        // grid / note, so the single keypad block is re-parented per tab.
+        // Each tab wants the amount field in a different place, so the single
+        // field is re-parented into that tab's own slot.
         const amountBlock = document.querySelector('.amount-block');
-        const slot = document.getElementById(mode === 'expense' ? 'amountSlotTop' : 'amountSlotMid');
+        const slot = document.getElementById(
+            mode === 'expense' ? 'amountSlotExpense'
+          : mode === 'bet'     ? 'amountSlotBet'
+          :                      'amountSlotCash');
         if (amountBlock && slot && amountBlock.parentElement !== slot) slot.appendChild(amountBlock);
 
         [['Expense', 'expense'], ['Bet', 'bet'], ['Cash', 'cash']].forEach(([suffix, m]) => {
