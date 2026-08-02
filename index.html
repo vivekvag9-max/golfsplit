@@ -209,6 +209,111 @@
 
         .pick-empty { font-size: 12px; color: #888; }
 
+        /* ---------- Paytm / UPI contacts ---------- */
+        .contacts-box {
+            margin-top: 10px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+
+        .contacts-box > summary {
+            cursor: pointer; list-style: none;
+            font-size: 12px; font-weight: 700; color: var(--green-dark);
+            user-select: none;
+        }
+
+        .contacts-box > summary::-webkit-details-marker { display: none; }
+
+        .note-sm {
+            font-size: 11px; color: var(--muted);
+            line-height: 1.45; margin: 8px 0 6px 0;
+        }
+
+        .note-sm code {
+            background: #eee; padding: 1px 4px; border-radius: 3px;
+            font-size: 10.5px;
+        }
+
+        .contact-row {
+            display: flex; align-items: center; gap: 8px; margin-top: 6px;
+        }
+
+        .contact-row > span {
+            flex: 0 0 78px;
+            font-size: 12.5px; font-weight: 700;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        input[type="text"].contact-input {
+            flex: 1 1 auto; min-width: 0;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .btn-pay {
+            flex: 0 0 auto;
+            display: inline-block;
+            background: #00b9f5;
+            color: white;
+            text-decoration: none;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            white-space: nowrap;
+            touch-action: manipulation;
+        }
+
+        .btn-pay:active { background: #0093c4; }
+
+        .pay-right { display: flex; align-items: center; gap: 8px; }
+
+        /* ---------- QR scanner ---------- */
+        .btn-scan {
+            flex: 0 0 auto;
+            background: #eee; color: #444;
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            font-size: 12px; font-weight: 700;
+            border-radius: 8px;
+        }
+
+        .scan-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(0,0,0,.88);
+            align-items: center; justify-content: center;
+            padding: 16px;
+        }
+
+        .scan-overlay.open { display: flex; }
+
+        .scan-panel {
+            width: 100%; max-width: 380px;
+            text-align: center; color: white;
+        }
+
+        .scan-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+
+        #scanVideo {
+            width: 100%; border-radius: 12px;
+            background: #000; aspect-ratio: 1 / 1; object-fit: cover;
+        }
+
+        .scan-status {
+            font-size: 13px; line-height: 1.5;
+            margin: 10px 0 12px 0; color: #ddd;
+        }
+
+        .btn-scan-close {
+            background: white; color: #222;
+            padding: 10px 22px; font-size: 14px;
+        }
+
         /* sits in the chip row and matches a chip's height.
            Selector must outrank the generic input[type="text"] rule above. */
         input[type="text"].preset-input {
@@ -305,6 +410,33 @@
         .expense-card.cash { border-left-color: var(--blue); }
 
         .error-msg { color: var(--red); font-size: 13px; margin-top: 5px; display: none; }
+
+        /* bets that don't cancel out leave the whole settlement unbalanced */
+        .bet-warning {
+            display: none;
+            background: #fff4e5;
+            border: 1px solid #ffb74d;
+            border-left: 4px solid var(--amber);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #7a4f00;
+        }
+
+        .bet-warning.show { display: block; }
+
+        .bet-tally {
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 8px;
+            padding: 7px 10px;
+            border-radius: 6px;
+        }
+
+        .bet-tally.ok  { background: var(--green-light); color: var(--green-dark); }
+        .bet-tally.off { background: #fff4e5; color: #8a5a00; }
 
         /* ---------- RESULTS ---------- */
         #results { display: none; margin-top: 22px; }
@@ -532,6 +664,17 @@
         </div>
         <div id="playerError" class="error-msg"></div>
         <div id="playerList" style="margin-top: 8px;"></div>
+        <details class="contacts-box" id="contactsBox" style="display: none;">
+            <summary>💳 Paytm / UPI details</summary>
+            <div class="note-sm">
+                Tap <b>Scan</b> to read their Paytm receive-money QR, or type a
+                <b>UPI ID</b> (e.g. <code>name@paytm</code>) or <b>10-digit mobile</b>.
+                A mobile is assumed to be <code>number@paytm</code>, which only works if
+                that person actually has a Paytm UPI ID — scanning is the reliable way.
+                Saved on this phone and reused in future rounds.
+            </div>
+            <div id="contactRows"></div>
+        </details>
     </div>
 
     <!-- Step 2: Entries -->
@@ -629,12 +772,15 @@
     <div class="section" id="expenseLogSection" style="display: none;">
         <h3>Transaction Log</h3>
         <div id="expenseList"></div>
+        <div id="betTally" class="bet-tally" style="display: none;"></div>
     </div>
 
     <button type="button" class="btn-main" onclick="calculateSettlement()">Settle Up!</button>
 
     <!-- Step 4: Outcome -->
     <div id="results">
+
+        <div id="betWarning" class="bet-warning"></div>
 
         <!-- A. The answer, first -->
         <div class="result-block">
@@ -691,6 +837,15 @@
 
 </div>
 
+<div id="scanOverlay" class="scan-overlay">
+    <div class="scan-panel">
+        <div class="scan-title" id="scanTitle">Scan UPI QR</div>
+        <video id="scanVideo" playsinline muted></video>
+        <div class="scan-status" id="scanStatus">Point the camera at the QR code…</div>
+        <button type="button" class="btn-scan-close" onclick="closeScanner()">Cancel</button>
+    </div>
+</div>
+
 <canvas id="exportCanvas" style="display:none;"></canvas>
 
 <script>
@@ -743,6 +898,33 @@
 
     // Preset expense types. Tapping one fills the description box; typing
     // still works, and a typed match lights the matching chip.
+    // UPI details are an address book, not round data: entered once per person
+    // and kept across rounds, so "Clear & start over" never loses them.
+    const CONTACTS_STORE = 'golf-settler-contacts-v1';
+    let contacts = {};     // lowercased player name -> UPI ID or mobile
+
+    function loadContacts() {
+        contacts = {};   // reset first, so a cleared store really clears
+        try {
+            const raw = JSON.parse(localStorage.getItem(CONTACTS_STORE) || 'null');
+            if (raw && typeof raw === 'object') contacts = raw;
+        } catch (e) {}
+    }
+
+    function saveContacts() {
+        try { localStorage.setItem(CONTACTS_STORE, JSON.stringify(contacts)); } catch (e) {}
+    }
+
+    const contactKey = name => String(name).trim().toLowerCase();
+    const getContact = name => contacts[contactKey(name)] || '';
+
+    function setContact(name, value) {
+        const k = contactKey(name);
+        if (value.trim()) contacts[k] = value.trim();
+        else delete contacts[k];
+        saveContacts();
+    }
+
     let descChoice = '';   // '' | a preset label | 'Misc'
 
     // Misc is the free-text option: picking it reveals a box in the chip row.
@@ -835,7 +1017,7 @@
 
     const MODE_HINTS = {
         expense: "Someone paid for the whole group — green fees, caddie, lunch. Pick who paid, then tick everyone whose share it covers.",
-        bet: "A side bet that's been decided. The loser's total goes down by the amount, the winner's goes up.",
+        bet: "Pick a winner, a loser, or just one of them — handy for team bets. Wins and losses must cancel out across the round.",
         cash: "Money that has already physically changed hands — settling up early, or covering someone at the counter. It reduces what the giver owes."
     };
 
@@ -854,6 +1036,19 @@
 
     function esc(s) {
         return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Bets must cancel out across the round: a win with no matching loss leaves
+    // the whole settlement unbalanced, so this is surfaced everywhere.
+    function betsNet() {
+        return expenses.reduce((t, e) => {
+            if (e.type !== 'bet') return t;
+            return t + (e.winner ? e.amount : 0) - (e.loser ? e.amount : 0);
+        }, 0);
+    }
+
+    function betCount() {
+        return expenses.filter(e => e.type === 'bet').length;
     }
 
     // ---- round date ----
@@ -892,8 +1087,24 @@
     function buildGrid() {
         return expenses.map(exp => {
             const cells = players.map(() => 0);
-            const share = exp.amount / exp.splitWith.length;
+            let label, sub;
 
+            if (exp.type === 'bet') {
+                if (exp.winner) {
+                    const wi = players.indexOf(exp.winner);
+                    if (wi !== -1) cells[wi] += exp.amount;
+                }
+                if (exp.loser) {
+                    const li = players.indexOf(exp.loser);
+                    if (li !== -1) cells[li] -= exp.amount;
+                }
+                label = `🎯 ${exp.description}`;
+                sub = (exp.winner && exp.loser) ? `${exp.winner} beat ${exp.loser}`
+                    : (exp.winner ? `${exp.winner} won` : `${exp.loser} lost`);
+                return { label, sub, cells, total: exp.amount };
+            }
+
+            const share = exp.amount / exp.splitWith.length;
             const payerIdx = players.indexOf(exp.payer);
             if (payerIdx !== -1) cells[payerIdx] += exp.amount;
 
@@ -902,11 +1113,7 @@
                 if (i !== -1) cells[i] -= share;
             });
 
-            let label, sub;
-            if (exp.type === 'bet') {
-                label = `🎯 ${exp.description}`;
-                sub = `${exp.winner} beat ${exp.loser}`;
-            } else if (exp.type === 'cash') {
+            if (exp.type === 'cash') {
                 label = `💵 ${exp.description}`;
                 sub = `${exp.giver} → ${exp.receiver}`;
             } else {
@@ -998,10 +1205,16 @@
     function removePlayer(index) {
         const removedPlayer = players[index];
         players.splice(index, 1);
-        expenses = expenses.filter(e => e.payer !== removedPlayer);
-
-        expenses.forEach(e => { e.splitWith = e.splitWith.filter(p => p !== removedPlayer); });
-        expenses = expenses.filter(e => e.splitWith.length > 0);
+        expenses = expenses.filter(e => {
+            if (e.type === 'bet') {
+                if (e.winner === removedPlayer) e.winner = null;
+                if (e.loser === removedPlayer) e.loser = null;
+                return e.winner || e.loser;          // drop only if nobody is left
+            }
+            if (e.payer === removedPlayer) return false;
+            e.splitWith = e.splitWith.filter(p => p !== removedPlayer);
+            return e.splitWith.length > 0;
+        });
 
         updatePlayerUI();
         renderExpenses();
@@ -1009,6 +1222,433 @@
         if (expenses.length === 0) document.getElementById('results').style.display = 'none';
         save();
     }
+
+    // A UPI ID wins; a bare 10-digit mobile is assumed to be <number>@paytm.
+    function vpaFor(name) {
+        const raw = getContact(name);
+        if (!raw) return '';
+        if (raw.includes('@')) return raw;
+
+        const digits = raw.replace(/\D/g, '');
+        const ten = digits.length > 10 ? digits.slice(-10) : digits;   // strip +91 etc.
+        return ten.length === 10 ? ten + '@paytm' : '';
+    }
+
+    // Generic UPI URI — what goes into the QR, readable by any UPI app.
+    function upiLink(toName, amount) {
+        const pa = vpaFor(toName);
+        if (!pa) return '';
+        const note = ('Golf' + (dateLabel() || '').replace(/-/g, '')).slice(0, 20);
+        return 'upi://pay'
+             + '?pa=' + encodeURIComponent(pa)
+             + '&pn=' + encodeURIComponent(toName)
+             + '&am=' + encodeURIComponent(Number(amount).toFixed(2))
+             + '&cu=INR'
+             + '&tn=' + encodeURIComponent(note);
+    }
+
+    function paytmLink(toName, amount) {
+        const pa = vpaFor(toName);
+        if (!pa) return '';
+        const note = ('Golf ' + (dateLabel() || '')).trim();
+        return 'paytmmp://pay'
+             + '?pa=' + encodeURIComponent(pa)
+             + '&pn=' + encodeURIComponent(toName)
+             + '&am=' + encodeURIComponent(Number(amount).toFixed(2))
+             + '&cu=INR'
+             + '&tn=' + encodeURIComponent(note);
+    }
+
+    // ---- minimal QR encoder: byte mode, ECC level M, versions 1-10 ----
+    // Only needs to carry short upi:// URIs, so the tables stop at version 10.
+    const QR = (function () {
+        const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+        for (let i = 0, x = 1; i < 255; i++) {
+            EXP[i] = x; LOG[x] = i;
+            x <<= 1; if (x & 0x100) x ^= 0x11D;
+        }
+        for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+        const mul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+        // version -> [ecCodewordsPerBlock, group1Blocks, group1Data, group2Blocks, group2Data]
+        const SPEC = {
+            1:[10,1,16,0,0],  2:[16,1,28,0,0],  3:[26,1,44,0,0],  4:[18,2,32,0,0],
+            5:[24,2,43,0,0],  6:[16,4,27,0,0],  7:[18,4,31,0,0],  8:[22,2,38,2,39],
+            9:[22,3,36,2,37], 10:[26,4,43,1,44]
+        };
+        const ALIGN = {
+            1:[], 2:[6,18], 3:[6,22], 4:[6,26], 5:[6,30],
+            6:[6,34], 7:[6,22,38], 8:[6,24,42], 9:[6,26,46], 10:[6,28,50]
+        };
+
+        function rsGen(n) {
+            let g = [1];
+            for (let i = 0; i < n; i++) {
+                const ng = new Array(g.length + 1).fill(0);
+                for (let j = 0; j < g.length; j++) {
+                    ng[j] ^= mul(g[j], EXP[i]);
+                    ng[j + 1] ^= g[j];
+                }
+                g = ng;
+            }
+            return g.reverse();            // descending powers, leading coefficient 1
+        }
+
+        function ecc(data, n) {
+            const g = rsGen(n);
+            const res = new Uint8Array(data.length + n);
+            res.set(data);
+            for (let i = 0; i < data.length; i++) {
+                const c = res[i];
+                if (!c) continue;
+                for (let j = 1; j <= n; j++) res[i + j] ^= mul(g[j], c);
+            }
+            return Array.from(res.slice(data.length));
+        }
+
+        const MASKS = [
+            (r,c) => (r + c) % 2 === 0,
+            (r,c) => r % 2 === 0,
+            (r,c) => c % 3 === 0,
+            (r,c) => (r + c) % 3 === 0,
+            (r,c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+            (r,c) => ((r * c) % 2 + (r * c) % 3) === 0,
+            (r,c) => (((r * c) % 2 + (r * c) % 3) % 2) === 0,
+            (r,c) => (((r + c) % 2 + (r * c) % 3) % 2) === 0
+        ];
+
+        function penalty(m, N) {
+            let p = 0;
+            // rule 1: runs of 5+
+            for (let i = 0; i < N; i++) {
+                for (const dir of [0, 1]) {
+                    let run = 1;
+                    for (let j = 1; j < N; j++) {
+                        const a = dir ? m[j][i] : m[i][j];
+                        const b = dir ? m[j-1][i] : m[i][j-1];
+                        if (a === b) { run++; if (run === 5) p += 3; else if (run > 5) p++; }
+                        else run = 1;
+                    }
+                }
+            }
+            // rule 2: 2x2 blocks
+            for (let i = 0; i < N - 1; i++)
+                for (let j = 0; j < N - 1; j++)
+                    if (m[i][j] === m[i][j+1] && m[i][j] === m[i+1][j] && m[i][j] === m[i+1][j+1]) p += 3;
+            // rule 3: finder-like 1011101 patterns
+            const pat = [1,0,1,1,1,0,1,0,0,0,0];
+            const rpat = [0,0,0,0,1,0,1,1,1,0,1];
+            for (let i = 0; i < N; i++) {
+                for (let j = 0; j + 11 <= N; j++) {
+                    let okA = true, okB = true, okC = true, okD = true;
+                    for (let k = 0; k < 11; k++) {
+                        if (m[i][j+k] !== pat[k]) okA = false;
+                        if (m[i][j+k] !== rpat[k]) okB = false;
+                        if (m[j+k][i] !== pat[k]) okC = false;
+                        if (m[j+k][i] !== rpat[k]) okD = false;
+                    }
+                    if (okA) p += 40; if (okB) p += 40; if (okC) p += 40; if (okD) p += 40;
+                }
+            }
+            // rule 4: dark ratio
+            let dark = 0;
+            for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) dark += m[i][j];
+            const pct = dark * 100 / (N * N);
+            p += Math.floor(Math.abs(pct - 50) / 5) * 10;
+            return p;
+        }
+
+        function encode(text) {
+            const bytes = Array.from(new TextEncoder().encode(text));
+
+            let ver = 0;
+            for (let v = 1; v <= 10; v++) {
+                const s = SPEC[v];
+                const cap = (s[1] * s[2] + s[3] * s[4]) * 8;
+                if (4 + (v >= 10 ? 16 : 8) + bytes.length * 8 <= cap) { ver = v; break; }
+            }
+            if (!ver) return null;                       // too long for version 10
+
+            const [ecb, g1, d1, g2, d2] = SPEC[ver];
+            const totalData = g1 * d1 + g2 * d2;
+
+            const bits = [];
+            const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); };
+            push(4, 4);
+            push(bytes.length, ver >= 10 ? 16 : 8);
+            bytes.forEach(b => push(b, 8));
+            for (let i = 0; i < 4 && bits.length < totalData * 8; i++) bits.push(0);
+            while (bits.length % 8) bits.push(0);
+
+            const dataBytes = [];
+            for (let i = 0; i < bits.length; i += 8) {
+                let b = 0;
+                for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+                dataBytes.push(b);
+            }
+            const PAD = [0xEC, 0x11];
+            while (dataBytes.length < totalData) dataBytes.push(PAD[(dataBytes.length - (bits.length / 8)) % 2]);
+
+            const blocks = [], eccs = [];
+            let off = 0;
+            for (let i = 0; i < g1; i++) { blocks.push(dataBytes.slice(off, off + d1)); off += d1; }
+            for (let i = 0; i < g2; i++) { blocks.push(dataBytes.slice(off, off + d2)); off += d2; }
+            blocks.forEach(b => eccs.push(ecc(b, ecb)));
+
+            const seq = [];
+            const maxD = Math.max(d1, d2);
+            for (let i = 0; i < maxD; i++) blocks.forEach(b => { if (i < b.length) seq.push(b[i]); });
+            for (let i = 0; i < ecb; i++) eccs.forEach(e => seq.push(e[i]));
+
+            const N = 17 + ver * 4;
+            const m = Array.from({ length: N }, () => new Array(N).fill(null));
+
+            const finder = (r, c) => {
+                for (let i = -1; i <= 7; i++) for (let j = -1; j <= 7; j++) {
+                    const rr = r + i, cc = c + j;
+                    if (rr < 0 || cc < 0 || rr >= N || cc >= N) continue;
+                    const on = (i >= 0 && i <= 6 && (j === 0 || j === 6)) ||
+                               (j >= 0 && j <= 6 && (i === 0 || i === 6)) ||
+                               (i >= 2 && i <= 4 && j >= 2 && j <= 4);
+                    m[rr][cc] = on ? 1 : 0;
+                }
+            };
+            finder(0, 0); finder(0, N - 7); finder(N - 7, 0);
+
+            for (let i = 8; i < N - 8; i++) {
+                m[6][i] = (i % 2 === 0) ? 1 : 0;
+                m[i][6] = (i % 2 === 0) ? 1 : 0;
+            }
+
+            const ap = ALIGN[ver];
+            for (const r of ap) for (const c of ap) {
+                if ((r <= 8 && c <= 8) || (r <= 8 && c >= N - 9) || (r >= N - 9 && c <= 8)) continue;
+                for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++)
+                    m[r + i][c + j] = (Math.max(Math.abs(i), Math.abs(j)) !== 1) ? 1 : 0;
+            }
+
+            // reserve format + version areas so data placement skips them
+            const reserve = (r, c) => { if (m[r][c] === null) m[r][c] = 0; };
+            for (let i = 0; i < 9; i++) { reserve(8, i); reserve(i, 8); }
+            for (let i = 0; i < 8; i++) { reserve(8, N - 1 - i); reserve(N - 1 - i, 8); }
+            if (ver >= 7) {
+                for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) {
+                    reserve(i, N - 11 + j); reserve(N - 11 + j, i);
+                }
+            }
+            m[N - 8][8] = 1;   // dark module
+
+            const isData = Array.from({ length: N }, () => new Array(N).fill(false));
+            const free = m.map(row => row.map(v => v === null));
+
+            let idx = 0, bit = 0, up = true;
+            for (let col = N - 1; col > 0; col -= 2) {
+                if (col === 6) col--;
+                for (let k = 0; k < N; k++) {
+                    const row = up ? N - 1 - k : k;
+                    for (let c = 0; c < 2; c++) {
+                        const cc = col - c;
+                        if (!free[row][cc]) continue;
+                        let b = 0;
+                        if (idx < seq.length) b = (seq[idx] >> (7 - bit)) & 1;
+                        m[row][cc] = b;
+                        isData[row][cc] = true;
+                        if (++bit === 8) { bit = 0; idx++; }
+                    }
+                }
+                up = !up;
+            }
+
+            const placeFormat = (mat, maskId) => {
+                let d = (0 << 3) | maskId;              // ECC level M is 0b00 in the format field
+                let rem = d;
+                for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >> 9) * 0x537);
+                const fmt = ((d << 10) | rem) ^ 0x5412;
+                for (let i = 0; i < 15; i++) {
+                    const b = (fmt >> i) & 1;
+                    if (i < 6) mat[i][8] = b;
+                    else if (i === 6) mat[7][8] = b;
+                    else if (i === 7) mat[8][8] = b;
+                    else if (i === 8) mat[8][7] = b;
+                    else mat[8][14 - i] = b;
+
+                    if (i < 8) mat[8][N - 1 - i] = b;
+                    else mat[N - 15 + i][8] = b;
+                }
+                mat[N - 8][8] = 1;
+            };
+
+            const placeVersion = (mat) => {
+                if (ver < 7) return;
+                let rem = ver;
+                for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >> 11) * 0x1F25);
+                const vb = (ver << 12) | rem;
+                for (let i = 0; i < 18; i++) {
+                    const b = (vb >> i) & 1;
+                    const r = Math.floor(i / 3), c = i % 3;
+                    mat[r][N - 11 + c] = b;
+                    mat[N - 11 + c][r] = b;
+                }
+            };
+
+            let best = null, bestScore = Infinity;
+            for (let mask = 0; mask < 8; mask++) {
+                const cand = m.map(r => r.slice());
+                for (let i = 0; i < N; i++) for (let j = 0; j < N; j++)
+                    if (isData[i][j] && MASKS[mask](i, j)) cand[i][j] ^= 1;
+                placeFormat(cand, mask);
+                placeVersion(cand);
+                const sc = penalty(cand, N);
+                if (sc < bestScore) { bestScore = sc; best = cand; }
+            }
+            return best;
+        }
+
+        return { encode };
+    })();
+
+    // Rendered side length of the QR for `text` inside `box` pixels (0 if it won't fit).
+    function qrSide(text, box) {
+        const mat = QR.encode(text);
+        if (!mat) return 0;
+        const span = mat.length + 8;                 // + quiet zone
+        return span * Math.max(1, Math.floor(box / span));
+    }
+
+    // Draw a QR for `text` with a white quiet zone, fitted into `box` pixels.
+    function drawQR(ctx, text, x, y, box) {
+        const mat = QR.encode(text);
+        if (!mat) return false;
+        const N = mat.length;
+        const quiet = 4;
+        const scale = Math.max(1, Math.floor(box / (N + quiet * 2)));
+        const side = (N + quiet * 2) * scale;
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, side, side);
+        ctx.fillStyle = '#000000';
+        for (let i = 0; i < N; i++)
+            for (let j = 0; j < N; j++)
+                if (mat[i][j]) ctx.fillRect(x + (j + quiet) * scale, y + (i + quiet) * scale, scale, scale);
+        return side;
+    }
+
+
+    // ---- QR scanning ----
+    // A UPI QR encodes something like upi://pay?pa=name@bank&pn=...
+    // so we only need the pa= parameter.
+    function upiFromQR(text) {
+        if (!text) return '';
+        const t = String(text).trim();
+
+        const m = t.match(/[?&]pa=([^&\s]+)/i);
+        if (m) return decodeURIComponent(m[1]);
+
+        // some QRs hold the bare VPA
+        if (/^[\w.\-]{2,}@[\w.\-]{2,}$/.test(t)) return t;
+        return '';
+    }
+
+    let scanStream = null;
+    let scanTarget = '';
+    let scanStop = false;
+
+    function closeScanner() {
+        scanStop = true;
+        if (scanStream) {
+            scanStream.getTracks().forEach(t => t.stop());   // release the camera
+            scanStream = null;
+        }
+        document.getElementById('scanVideo').srcObject = null;
+        document.getElementById('scanOverlay').classList.remove('open');
+    }
+
+    async function openScanner(name) {
+        const overlay = document.getElementById('scanOverlay');
+        const status = document.getElementById('scanStatus');
+        const video = document.getElementById('scanVideo');
+
+        scanTarget = name;
+        scanStop = false;
+        document.getElementById('scanTitle').textContent = `Scan ${name}'s UPI QR`;
+        status.textContent = 'Starting camera…';
+        overlay.classList.add('open');
+
+        if (!('BarcodeDetector' in window)) {
+            status.innerHTML = 'This browser can\'t scan QR codes.<br>Type the UPI ID instead.';
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            status.innerHTML = 'No camera access here.<br>Open the app over <b>https</b>, not as a local file.';
+            return;
+        }
+
+        try {
+            scanStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
+            });
+        } catch (err) {
+            status.innerHTML = 'Camera blocked or unavailable.<br>Allow camera access, or type the UPI ID.';
+            return;
+        }
+
+        video.srcObject = scanStream;
+        await video.play().catch(() => {});
+        status.textContent = 'Point the camera at the QR code…';
+
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+
+        const tick = async () => {
+            if (scanStop) return;
+            try {
+                const codes = await detector.detect(video);
+                if (codes && codes.length) {
+                    const upi = upiFromQR(codes[0].rawValue);
+                    if (upi) {
+                        setContact(scanTarget, upi);
+                        renderContacts();
+                        if (document.getElementById('results').style.display === 'block') {
+                            calculateSettlement(false);
+                        }
+                        closeScanner();
+                        return;
+                    }
+                    status.textContent = 'That QR has no UPI ID in it — try their Paytm receive-money QR.';
+                }
+            } catch (e) { /* frame not ready */ }
+            requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+
+    function renderContacts() {
+        const box = document.getElementById('contactsBox');
+        const rows = document.getElementById('contactRows');
+        if (!box) return;
+
+        box.style.display = players.length ? 'block' : 'none';
+        rows.innerHTML = players.map(pl => `
+            <div class="contact-row">
+                <span>${esc(pl)}</span>
+                <input type="text" class="contact-input" data-contact="${esc(pl)}"
+                       placeholder="UPI ID or mobile" autocomplete="off"
+                       inputmode="email" value="${esc(getContact(pl))}">
+                <button type="button" class="btn-scan" data-scan="${esc(pl)}">Scan</button>
+            </div>`).join('');
+    }
+
+    document.addEventListener('click', e => {
+        const b = e.target.closest('.btn-scan');
+        if (b) openScanner(b.dataset.scan);
+    });
+
+    document.addEventListener('input', e => {
+        const el = e.target.closest('.contact-input');
+        if (!el) return;
+        setContact(el.dataset.contact, el.value);
+        // refresh the Pay buttons if results are already on screen
+        if (document.getElementById('results').style.display === 'block') calculateSettlement(false);
+    });
 
     function updatePlayerUI() {
         document.getElementById('playerList').innerHTML = players.map((p, i) => `
@@ -1018,6 +1658,8 @@
         `).join('');
 
         renderPickers();
+
+        renderContacts();
 
         const checkGrid = document.getElementById('splitCheckboxes');
         checkGrid.innerHTML = players.length === 0
@@ -1061,13 +1703,16 @@
             const loser = picks.betLoser;
             const amount = amountValue();
 
-            if (!winner || !loser) return fail("Please select both Winner and Loser.");
-            if (winner === loser) return fail("Winner and Loser cannot be the same person.");
+            if (!winner && !loser) return fail("Pick a winner, a loser, or both.");
+            if (winner && loser && winner === loser) return fail("Winner and loser cannot be the same person.");
             if (isNaN(amount) || amount <= 0) return fail("Please enter a valid bet amount.");
 
+            // winner-only or loser-only entries are allowed; the bets must simply
+            // net to zero across the round for the settlement to balance.
             expenses.push({
-                type: 'bet', description: desc, payer: winner, amount,
-                splitWith: [loser], winner, loser, id: nextId()
+                type: 'bet', description: desc, amount,
+                payer: winner || null, splitWith: loser ? [loser] : [],
+                winner: winner || null, loser: loser || null, id: nextId()
             });
 
             clearAmount();
@@ -1115,14 +1760,33 @@
         }
 
         logSection.style.display = 'block';
+
+        const tallyEl = document.getElementById('betTally');
+        if (betCount() === 0) {
+            tallyEl.style.display = 'none';
+        } else {
+            const net = betsNet();
+            const off = Math.abs(net) >= EPS;
+            tallyEl.style.display = 'block';
+            tallyEl.className = 'bet-tally ' + (off ? 'off' : 'ok');
+            tallyEl.innerHTML = off
+                ? `⚠️ Bets are out by <b>${signed(net)}</b> — add the matching ${net > 0 ? 'loss' : 'win'} to balance them.`
+                : `✓ Bets balance to zero`;
+        }
+
         listDiv.innerHTML = expenses.map(e => {
             const del = `<button type="button" class="delete-btn" onclick="removeExpense(${e.id})" style="font-size: 16px;">✕</button>`;
 
             if (e.type === 'bet') {
+                const line = (e.winner && e.loser)
+                    ? `<b>${esc(e.loser)}</b> owes <b>${esc(e.winner)}</b>: <strong>${money(e.amount)}</strong>`
+                    : (e.winner
+                        ? `<b>${esc(e.winner)}</b> won <strong>${money(e.amount)}</strong>`
+                        : `<b>${esc(e.loser)}</b> lost <strong>${money(e.amount)}</strong>`);
                 return `<div class="expense-card bet">
                     <div>
                         <strong>🎯 Bet: ${esc(e.description)}</strong>
-                        <br><small style="color:#444;"><b>${esc(e.loser)}</b> owes <b>${esc(e.winner)}</b>: <strong>${money(e.amount)}</strong></small>
+                        <br><small style="color:#444;">${line}</small>
                     </div>${del}</div>`;
             }
             if (e.type === 'cash') {
@@ -1162,6 +1826,16 @@
         let totalSpend = 0;
 
         expenses.forEach(exp => {
+            // Bets may be one-sided, so they don't use the payer/splitWith pair.
+            if (exp.type === 'bet') {
+                if (exp.winner && parts[exp.winner]) parts[exp.winner].betsWon += exp.amount;
+                if (exp.loser && parts[exp.loser]) parts[exp.loser].betsLost += exp.amount;
+                if (exp.winner && exp.loser && idx[exp.winner] !== undefined && idx[exp.loser] !== undefined) {
+                    rawDebts[idx[exp.loser]][idx[exp.winner]] += exp.amount;
+                }
+                return;
+            }
+
             const payerIdx = idx[exp.payer];
             const share = exp.amount / exp.splitWith.length;
             const isShared = (exp.type === 'expense' || !exp.type);
@@ -1169,8 +1843,6 @@
             if (isShared) {
                 totalSpend += exp.amount;
                 parts[exp.payer].paidForGroup += exp.amount;
-            } else if (exp.type === 'bet') {
-                parts[exp.winner].betsWon += exp.amount;
             } else {
                 parts[exp.giver].cashGiven += exp.amount;
             }
@@ -1179,7 +1851,6 @@
                 if (idx[p] === undefined) return;
 
                 if (isShared) parts[p].ownShare += share;
-                else if (exp.type === 'bet') parts[p].betsLost += share;
                 else parts[p].cashReceived += share;
 
                 if (idx[p] !== payerIdx) rawDebts[idx[p]][payerIdx] += share;
@@ -1255,6 +1926,18 @@
     function renderResults(pairwise, scroll) {
         const { transactions, directDebts, cards } = last;
 
+        // Bets that don't cancel leave every downstream number unbalanced.
+        const bNet = betsNet();
+        const warn = document.getElementById('betWarning');
+        if (Math.abs(bNet) >= EPS) {
+            warn.className = 'bet-warning show';
+            warn.innerHTML = `<b>⚠️ Bets don't cancel out.</b> They come to ${signed(bNet)} instead of zero, `
+                + `so this plan won't leave everyone square. Add the matching `
+                + `${bNet > 0 ? 'loss' : 'win'} of ${money(bNet)} and settle again.`;
+        } else {
+            warn.className = 'bet-warning';
+        }
+
         // A. Headline + payment list
         const verdictMain = document.getElementById('verdictMain');
         const verdictSub = document.getElementById('verdictSub');
@@ -1268,16 +1951,21 @@
             const n = transactions.length;
             verdictMain.innerText = `${n} payment${n > 1 ? 's' : ''} settle${n > 1 ? '' : 's'} the round.`;
             verdictSub.innerText = "Make these and everyone is square. Nothing else needs to move.";
-            payList.innerHTML = transactions.map(t => `
+            payList.innerHTML = transactions.map(t => {
+                const link = paytmLink(t.to, t.amount);
+                return `
                 <div class="payment">
                     <div class="pay-people">
                         <span class="name">${esc(t.from)}</span>
                         <span class="pay-arrow">pays →</span>
                         <span class="name">${esc(t.to)}</span>
                     </div>
-                    <div class="pay-amt">${money(t.amount)}</div>
-                </div>
-            `).join('');
+                    <div class="pay-right">
+                        <span class="pay-amt">${money(t.amount)}</span>
+                        ${link ? `<a class="btn-pay" href="${esc(link)}">Paytm</a>` : ''}
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         // B. The spreadsheet grid
@@ -1307,7 +1995,8 @@
 
         document.getElementById('gridNote').innerHTML =
             `Amounts in ${esc(currencySymbol)}. A plain number is money <b>in</b> (they paid, or won) — ` +
-            `<b>(brackets)</b> are money <b>out</b> (their share, or a loss). Every row cancels to zero; ` +
+            `<b>(brackets)</b> are money <b>out</b> (their share, or a loss). Rows cancel to zero, ` +
+            `except one-sided bets, which are balanced by their matching entry elsewhere; ` +
             `the <b>Total</b> column is the size of that entry. <b>NET</b> is each player's bottom line — ` +
             `positive means the group owes them.`;
 
@@ -1452,7 +2141,16 @@
 
         const W = Math.max(620, gridW + 60);
         const headerH = 108;
-        const planH = 46 + Math.max(last.transactions.length, 1) * 46;
+        const QR_BOX = 112;
+        const payQR = last.transactions.map(t => {
+            const link = upiLink(t.to, t.amount);
+            return link ? { link, side: qrSide(link, QR_BOX) } : null;
+        });
+        const anyQR = payQR.some(Boolean);
+        const rowH = payQR.map(q => q && q.side ? Math.max(120, q.side + 46) : 46);
+        const planH = 46
+            + (last.transactions.length ? rowH.reduce((a, b) => a + b, 0) : 46)
+            + (anyQR ? 24 : 0);
 
         const ROW_H = 34;
         const gridH = 46 + (last.grid.length + 2) * ROW_H + 40;
@@ -1508,17 +2206,44 @@
             ctx.fillText('Everyone is completely even.', 30, y);
             y += 30;
         } else {
-            last.transactions.forEach(t => {
+            last.transactions.forEach((t, i) => {
+                const q = payQR[i];
+                const h = rowH[i];
+
                 ctx.fillStyle = '#e8f5e9';
-                ctx.fillRect(30, y - 21, W - 60, 38);
+                ctx.fillRect(30, y - 21, W - 60, h - 8);
+
                 ctx.fillStyle = '#2e7d32';
                 ctx.font = 'bold 16px -apple-system, sans-serif';
                 ctx.fillText(`${t.from}  ➔  ${t.to}`, 45, y + 4);
-                ctx.textAlign = 'right';
-                ctx.fillText(money(t.amount), W - 45, y + 4);
-                ctx.textAlign = 'left';
-                y += 46;
+
+                if (q && q.side) {
+                    ctx.font = 'bold 21px -apple-system, sans-serif';
+                    ctx.fillText(money(t.amount), 45, y + 36);
+
+                    const qx = W - 45 - q.side;
+                    drawQR(ctx, q.link, qx, y - 12, QR_BOX);
+
+                    ctx.fillStyle = '#4b5563';
+                    ctx.font = '10.5px -apple-system, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Scan to pay ' + t.to, qx + q.side / 2, y - 12 + q.side + 14);
+                    ctx.textAlign = 'left';
+                } else {
+                    ctx.textAlign = 'right';
+                    ctx.fillText(money(t.amount), W - 45, y + 4);
+                    ctx.textAlign = 'left';
+                }
+
+                y += h;
             });
+
+            if (anyQR) {
+                ctx.fillStyle = '#777777';
+                ctx.font = '11.5px -apple-system, sans-serif';
+                ctx.fillText('Save this image, then use “Scan from gallery” in Paytm / GPay / PhonePe.', 30, y - 6);
+                y += 18;
+            }
         }
 
         // ---- the spreadsheet grid ----
@@ -1612,7 +2337,7 @@
 
         ctx.fillStyle = '#777777';
         ctx.font = '11.5px -apple-system, sans-serif';
-        ctx.fillText(`Amounts in ${currencySymbol}. Plain = money in · (brackets) = money out. Every row cancels to zero.`, gx, y);
+        ctx.fillText(`Amounts in ${currencySymbol}. Plain = money in · (brackets) = money out.`, gx, y);
         y += 24;
 
         ctx.strokeStyle = '#e0e0e0';
@@ -1726,6 +2451,7 @@
         try { localStorage.removeItem(STORE); } catch (e) {}
     }
 
+    loadContacts();
     document.getElementById('roundDate').value = todayISO();
     setMode('expense');
 
