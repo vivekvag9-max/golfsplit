@@ -17,6 +17,11 @@
             --wa: #25D366;
             --ink: #1f2421;
             --muted: #6b7280;
+            /* Three selected-chip colours, checked for colour-blind separation
+               and >=4.5:1 contrast against the white chip text. */
+            --pick-blue:   #0277bd;   /* Paid by */
+            --pick-violet: #c2410c;   /* For */
+            --pick-teal:   #6a1b9a;   /* Split across */
         }
 
         * { box-sizing: border-box; }
@@ -120,12 +125,6 @@
         input[type="number"] { flex: 1; min-width: 90px; }
         select { width: 100%; background: white; }
 
-        input[type="checkbox"] {
-            width: 20px; height: 20px;
-            accent-color: var(--green);
-            cursor: pointer; margin: 0;
-        }
-
         button {
             background-color: var(--green);
             color: white;
@@ -192,7 +191,7 @@
             margin-bottom: 12px;
         }
 
-        .pick, .preset {
+        .pick, .preset, .splitchip {
             padding: 7px 13px;
             font-size: 13px; font-weight: 600;
             background: #eee; color: #555;
@@ -200,9 +199,23 @@
             cursor: pointer;
         }
 
-        .pick[aria-pressed="true"],
-        .preset[aria-pressed="true"] {
-            background: var(--green); color: white; border-color: var(--green);
+        /* each picker gets its own selected colour so the three rows never blur together */
+        .pick[aria-pressed="true"] {                 /* Paid by / cash giver & receiver */
+            background: var(--pick-blue); color: white; border-color: var(--pick-blue);
+        }
+
+        .preset[aria-pressed="true"] {               /* For */
+            background: var(--pick-violet); color: white; border-color: var(--pick-violet);
+        }
+
+        .splitchip[aria-pressed="true"] {            /* Split across */
+            background: var(--pick-teal); color: white; border-color: var(--pick-teal);
+        }
+
+        /* excluded from the split reads as struck-through, not merely unselected */
+        .splitchip[aria-pressed="false"] {
+            text-decoration: line-through;
+            opacity: .6;
         }
 
         /* presets are a shortcut, not a required choice — read one step quieter */
@@ -272,6 +285,77 @@
         .btn-pay:active { background: #0093c4; }
 
         .pay-right { display: flex; align-items: center; gap: 8px; }
+
+        .seg-mini {
+            display: flex; gap: 4px; padding: 3px;
+            background: #f0f0f0; border: 1px solid #e0e0e0;
+            border-radius: 9px; margin-bottom: 8px;
+        }
+
+        .seg-mini button {
+            flex: 1; padding: 6px 4px;
+            font-size: 12px; font-weight: 700;
+            background: transparent; color: #666;
+            border: none; border-radius: 6px;
+        }
+
+        .seg-mini button[aria-pressed="true"] {
+            background: white; color: var(--green-dark);
+            box-shadow: 0 1px 2px rgba(0,0,0,.12);
+        }
+
+        /* ---------- bet grid: name | won/lost | amount ---------- */
+        .bet-grid { margin: 4px 0 0 0; }
+
+        .bet-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .bet-row:last-child { border-bottom: none; }
+
+        .bet-name {
+            flex: 1 1 auto; min-width: 0;
+            font-size: 13.5px; font-weight: 700;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .bet-toggle { flex: 0 0 auto; display: flex; gap: 4px; }
+
+        .bet-toggle button {
+            padding: 5px 10px;
+            font-size: 11.5px; font-weight: 700;
+            background: #eee; color: #666;
+            border: 1px solid #ddd; border-radius: 14px;
+        }
+
+        .bet-toggle button[aria-pressed="true"][data-side="won"] {
+            background: var(--green); color: white; border-color: var(--green);
+        }
+
+        .bet-toggle button[aria-pressed="true"][data-side="lost"] {
+            background: var(--red); color: white; border-color: var(--red);
+        }
+
+        input[type="text"].bet-amt-input {
+            flex: 0 0 84px;
+            min-width: 0;
+            padding: 6px 9px;
+            font-size: 16px; font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            border: 1px solid #ddd; border-radius: 8px;
+        }
+
+        .bet-sum {
+            font-size: 12px; font-weight: 700;
+            margin-top: 8px; padding: 7px 10px; border-radius: 6px;
+        }
+
+        .bet-sum.ok  { background: var(--green-light); color: var(--green-dark); }
+        .bet-sum.off { background: #fff4e5; color: #8a5a00; }
+        .bet-sum.idle { background: #f5f5f5; color: #777; }
 
         .beta {
             display: inline-block;
@@ -411,83 +495,30 @@
             width: 138px;
             min-width: 0;
             padding: 5px 12px;
-            border: 1px solid var(--green);
+            border: 1px solid var(--pick-violet);
             border-radius: 20px;
             font-weight: 600;
         }
 
-        /* ---------- in-app amount keypad ---------- */
-        .amount-block {
-            background: #fafafa;
-            border: 1px solid #eee;
-            border-radius: 10px;
-            padding: 10px;
-            margin: 0 0 14px 0;
+        /* ---------- amount field (native numeric keyboard) ---------- */
+        .amount-block { margin: 0 0 12px 0; }
+
+        .amount-line {
+            display: flex; align-items: center; gap: 10px;
         }
 
-        .amount-head {
-            display: flex; justify-content: space-between; align-items: baseline;
-            margin-bottom: 5px;
-        }
+        .amount-line .pick-label { flex: 0 0 auto; }
 
-        .linkbtn {
-            background: none; border: none; padding: 0; cursor: pointer;
-            font: inherit; font-size: 11.5px; font-weight: 700;
-            color: var(--green); text-decoration: underline;
-        }
-
-        .amount-display {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 7px 11px;
-            font-size: 20px;
-            font-weight: 800;
+        input[type="text"]#amountInput {
+            flex: 1 1 auto; min-width: 0;
+            padding: 10px 12px;
+            font-size: 20px; font-weight: 800;
             font-variant-numeric: tabular-nums;
             text-align: right;
             color: var(--green-dark);
-            margin-bottom: 8px;
-            max-width: 232px;
-            overflow-x: auto;
-            white-space: nowrap;
+            border: 1px solid #ccc; border-radius: 9px;
         }
 
-        .amount-display.is-empty { color: #c7c7c7; }
-
-        .keypad {
-            display: grid;
-            grid-template-columns: repeat(3, 72px);
-            gap: 6px;
-            max-width: 232px;
-        }
-
-        /* keys sit at the same visual weight as a chip in .pick-row */
-        .key {
-            background: white;
-            color: var(--ink);
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            padding: 7px 0;
-            font-size: 14px;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            cursor: pointer;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .key:active { background: var(--green-light); border-color: var(--green); }
-        .key-dim { background: #f0f0f0; color: #555; }
-        .key-wide { grid-column: span 2; }
-
-        .checkbox-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-            margin: 8px 0 15px 0; background: #fafafa;
-            padding: 10px; border-radius: 8px;
-        }
-
-        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; user-select: none; }
-        .checkbox-item label { cursor: pointer; width: 100%; }
 
         .expense-card {
             display: flex; justify-content: space-between; align-items: center;
@@ -743,7 +774,7 @@
             <input type="date" id="roundDate" onchange="onDateChange()">
         </label>
         <button type="button" class="btn-clear-top" onclick="openHelp()">How to use</button>
-        <button type="button" class="btn-clear-top" onclick="resetAll()">Clear</button>
+        <button type="button" class="btn-clear-top" id="clearBtn" onclick="resetAll()">Clear</button>
     </div>
 
     <!-- Step 1: Players -->
@@ -782,24 +813,34 @@
 
         <div>
             <!-- what it was for -->
+            <div id="amountSlotTop"></div>
+
             <div id="whatExpense">
-                <div class="pick-label">What was it for?</div>
+                <div class="pick-label">Paid by</div>
+                <div class="pick-row" id="payerPick"></div>
+
+                <div class="pick-label">For</div>
                 <div class="pick-row" id="typePick">
                     <button type="button" class="preset" data-desc="Booking" aria-pressed="false">Booking</button>
                     <button type="button" class="preset" data-desc="Pro shop" aria-pressed="false">Pro shop</button>
-                    <button type="button" class="preset" data-desc="Cart/caddy" aria-pressed="false">Cart/caddy</button>
                     <button type="button" class="preset" data-desc="Food" aria-pressed="false">Food</button>
                     <button type="button" class="preset" data-desc="Caddy tip" aria-pressed="false">Caddy tip</button>
                     <button type="button" class="preset" data-desc="Misc" aria-pressed="false">Misc</button>
                     <input type="text" id="expenseDesc" class="preset-input" placeholder="Type it…" autocomplete="off" style="display: none;">
                 </div>
+
+                <div class="pick-label">Split across</div>
+                <div class="pick-row" id="splitChips"></div>
             </div>
 
             <div id="whatBet" style="display: none;">
-                <div class="pick-label">Which bet?</div>
-                <div class="input-group">
-                    <input type="text" id="betDesc" placeholder="e.g. Skins, Hole 9" autocomplete="off" style="flex: 1 1 100%;">
+                <div class="pick-label">Amounts</div>
+                <div class="seg-mini" id="betModeSeg">
+                    <button type="button" data-betmode="equal" aria-pressed="true">Equal</button>
+                    <button type="button" data-betmode="different" aria-pressed="false">Different</button>
                 </div>
+                <div class="bet-grid" id="betGrid"></div>
+                <div class="bet-sum" id="betSum"></div>
             </div>
 
             <div id="whatCash" style="display: none;">
@@ -809,43 +850,19 @@
                 </div>
             </div>
 
+            <div id="amountSlotMid"></div>
+
             <div class="amount-block">
-                <div class="amount-head">
-                    <span class="pick-label" style="margin:0;">Amount</span>
-                    <button type="button" class="linkbtn" id="amountClear">clear</button>
-                </div>
-                <div class="amount-display" id="amountDisplay" aria-live="polite">0</div>
-                <div class="keypad" id="keypad">
-                    <button type="button" class="key" data-k="1">1</button>
-                    <button type="button" class="key" data-k="2">2</button>
-                    <button type="button" class="key" data-k="3">3</button>
-                    <button type="button" class="key" data-k="4">4</button>
-                    <button type="button" class="key" data-k="5">5</button>
-                    <button type="button" class="key" data-k="6">6</button>
-                    <button type="button" class="key" data-k="7">7</button>
-                    <button type="button" class="key" data-k="8">8</button>
-                    <button type="button" class="key" data-k="9">9</button>
-                    <button type="button" class="key key-wide" data-k="0">0</button>
-                    <button type="button" class="key key-dim" data-k="del" aria-label="Delete last digit">&#9003;</button>
-                </div>
+                <label class="amount-line">
+                    <span class="pick-label" id="amountLabel" style="margin:0;">Amount</span>
+                    <input type="text" id="amountInput" inputmode="numeric" pattern="[0-9]*"
+                           enterkeyhint="done" placeholder="0" autocomplete="off">
+                </label>
             </div>
 
-            <!-- who it involves -->
-            <div id="whoExpense">
-                <div class="pick-label">Who paid?</div>
-                <div class="pick-row" id="payerPick"></div>
-                <div style="font-size: 13px; font-weight: bold; color: #555;">Split Between:</div>
-                <div id="splitCheckboxes" class="checkbox-grid">
-                    <div style="font-size: 12px; color: #888;">Add players above first</div>
-                </div>
-            </div>
+            <div id="whoExpense"></div>
 
-            <div id="whoBet" style="display: none;">
-                <div class="pick-label">Winner (gets paid)</div>
-                <div class="pick-row" id="betWinnerPick"></div>
-                <div class="pick-label">Loser (owes money)</div>
-                <div class="pick-row" id="betLoserPick"></div>
-            </div>
+            <div id="whoBet" style="display: none;"></div>
 
             <div id="whoCash" style="display: none;">
                 <div class="pick-label">Who handed the cash over</div>
@@ -950,8 +967,8 @@
             </div></div>
 
             <h3>Logging the round</h3>
-            <p>Every entry needs an amount, tapped on the keypad (whole rupees).
-            Then pick one of three kinds:</p>
+            <p>Every entry needs an amount in whole rupees, typed on your phone's
+            number pad. Then pick one of three kinds:</p>
             <ul>
                 <li><b>🛒 Shared expense</b> — one person paid for the group. Tap what it
                 was for, who paid, then tick everyone it covers. The cost splits equally
@@ -1022,44 +1039,129 @@
     let currentMode = 'expense';
 
     // Who is selected in each person-picker (chip rows, not dropdowns)
-    const picks = { payer: '', betWinner: '', betLoser: '', cashGiver: '', cashReceiver: '' };
+    const picks = { payer: '', cashGiver: '', cashReceiver: '' };
     const PICKERS = [
         ['payerPick', 'payer'],
-        ['betWinnerPick', 'betWinner'],
-        ['betLoserPick', 'betLoser'],
         ['cashGiverPick', 'cashGiver'],
         ['cashReceiverPick', 'cashReceiver']
     ];
 
-    // ---- in-app numeric keypad ----
-    // Amount is typed by tapping, never by the OS keyboard, so the layout
-    // never shifts mid-entry. One keypad serves all three tabs.
-    let amountStr = '';
+    // ---- amount handling ----
+    // Amounts use the device's own numeric keyboard. Digits only, whole rupees.
+    const digitsOnly = v => String(v || '').replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+
+    function amountValue() {
+        const el = document.getElementById('amountInput');
+        return parseFloat(digitsOnly(el ? el.value : '')) || NaN;
+    }
+
+    function clearAmount() {
+        const el = document.getElementById('amountInput');
+        if (el) el.value = '';
+    }
 
     function renderAmount() {
-        const el = document.getElementById('amountDisplay');
-        if (!el) return;
-
-        el.classList.toggle('is-empty', amountStr === '');
-        const digits = amountStr === '' ? '0' : amountStr;
-        el.textContent = currencySymbol + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        const lbl = document.getElementById('amountLabel');
+        if (!lbl) return;
+        lbl.textContent = (currentMode === 'bet' && betMode === 'equal') ? 'Stake each' : 'Amount';
+        const block = document.querySelector('.amount-block');
+        // in Different mode each row carries its own amount, so hide the shared field
+        if (block) block.style.display = (currentMode === 'bet' && betMode === 'different') ? 'none' : 'block';
     }
 
-    // whole numbers only
-    function pressKey(k) {
-        if (k === 'del') {
-            amountStr = amountStr.slice(0, -1);
-        } else if (/^[0-9]$/.test(k)) {
-            if (amountStr.length >= 9) return;      // sane upper bound
-            if (amountStr === '0') amountStr = k;   // no leading zeros
-            else amountStr += k;
+    // ---- bet grid ----
+    // One row per player: won / lost toggle, plus an amount field in Different mode.
+    let betRows = {};          // name -> { side: ''|'won'|'lost', amt: '' }
+    let betMode = 'equal';     // 'equal' = one stake for everyone, 'different' = per player
+
+    const betRow = n => (betRows[n] || (betRows[n] = { side: '', amt: '' }));
+
+    function betBatchNet() {
+        return players.reduce((t, n) => {
+            const r = betRows[n];
+            if (!r || !r.side) return t;
+            const v = parseFloat(r.amt || '0') || 0;
+            return t + (r.side === 'won' ? v : -v);
+        }, 0);
+    }
+
+    function renderBetGrid() {
+        const grid = document.getElementById('betGrid');
+        if (!grid) return;
+
+        if (players.length === 0) {
+            grid.innerHTML = '<div class="pick-empty">Add players above first</div>';
+            updateBetSum();
+            return;
         }
-        renderAmount();
+
+        grid.innerHTML = players.map(n => {
+            const r = betRow(n);
+            const cellHTML = (betMode === 'different')
+                ? `<input type="text" class="bet-amt-input" data-betamt="${esc(n)}"
+                          inputmode="numeric" pattern="[0-9]*" placeholder="0"
+                          autocomplete="off" value="${esc(r.amt)}">`
+                : '';
+            return `
+                <div class="bet-row">
+                    <span class="bet-name">${esc(n)}</span>
+                    <span class="bet-toggle">
+                        <button type="button" data-betside="${esc(n)}" data-side="won"  aria-pressed="${r.side === 'won'}">Won</button>
+                        <button type="button" data-betside="${esc(n)}" data-side="lost" aria-pressed="${r.side === 'lost'}">Lost</button>
+                    </span>
+                    ${cellHTML}
+                </div>`;
+        }).join('');
+
+        updateBetSum();
     }
 
-    function clearAmount() { amountStr = ''; renderAmount(); }
+    // Kept separate from renderBetGrid so typing in a row doesn't blow away focus.
+    function updateBetSum() {
+        const sum = document.getElementById('betSum');
+        if (!sum) return;
 
-    function amountValue() { return parseFloat(amountStr); }
+        if (players.length === 0) { sum.style.display = 'none'; return; }
+        sum.style.display = 'block';
+
+        const won = players.filter(n => betRows[n] && betRows[n].side === 'won').length;
+        const lost = players.filter(n => betRows[n] && betRows[n].side === 'lost').length;
+
+        if (betMode === 'equal') {
+            const stake = parseFloat(digitsOnly((document.getElementById('amountInput') || {}).value)) || 0;
+            if (!won && !lost) {
+                sum.className = 'bet-sum idle';
+                sum.textContent = 'Mark who won and who lost, then enter the stake.';
+            } else if (!won || !lost) {
+                sum.className = 'bet-sum off';
+                sum.textContent = `⚠️ ${won} won, ${lost} lost — you need at least one of each.`;
+            } else if (won !== lost) {
+                sum.className = 'bet-sum off';
+                sum.textContent = `⚠️ ${won} won vs ${lost} lost — equal stakes need equal numbers on each side.`;
+            } else if (stake <= 0) {
+                sum.className = 'bet-sum idle';
+                sum.textContent = `${won} won, ${lost} lost — now enter the stake.`;
+            } else {
+                sum.className = 'bet-sum ok';
+                sum.innerHTML = `✓ ${won} won, ${lost} lost at <b>${money(stake)}</b> each — ready to add.`;
+            }
+            return;
+        }
+
+        const anyAmount = players.some(n => betRows[n] && parseFloat(betRows[n].amt || '0') > 0);
+        const net = betBatchNet();
+
+        if (!(won + lost) || !anyAmount) {
+            sum.className = 'bet-sum idle';
+            sum.textContent = (won + lost) ? 'Now enter each amount.' : 'Tap Won or Lost, then enter each amount.';
+        } else if (Math.abs(net) < EPS) {
+            sum.className = 'bet-sum ok';
+            sum.textContent = '✓ Wins and losses cancel out — ready to add.';
+        } else {
+            sum.className = 'bet-sum off';
+            sum.innerHTML = `⚠️ Out by <b>${signed(net)}</b> — wins and losses must cancel before adding.`;
+        }
+    }
 
     // Preset expense types. Tapping one fills the description box; typing
     // still works, and a typed match lights the matching chip.
@@ -1181,8 +1283,8 @@
     };
 
     const MODE_HINTS = {
-        expense: "Someone paid for the whole group — green fees, caddie, lunch. Pick who paid, then tick everyone whose share it covers.",
-        bet: "Pick a winner, a loser, or just one of them — handy for team bets. Wins and losses must cancel out across the round.",
+        expense: "Enter the amount, who paid, what for, then tap anyone who should be left out of the split.",
+        bet: "Mark who won and who lost. Equal — one stake for everyone, so the sides must be even in number. Different — set each amount, and they must cancel out.",
         cash: "Money that has already physically changed hands — settling up early, or covering someone at the counter. It reduces what the giver owes."
     };
 
@@ -1309,6 +1411,12 @@
         document.getElementById('tabBet').className = 'type-tab ' + (mode === 'bet' ? 'active' : '');
         document.getElementById('tabCash').className = 'type-tab ' + (mode === 'cash' ? 'active' : '');
 
+        // Amount comes first on the expense tab; on the others it follows the
+        // grid / note, so the single keypad block is re-parented per tab.
+        const amountBlock = document.querySelector('.amount-block');
+        const slot = document.getElementById(mode === 'expense' ? 'amountSlotTop' : 'amountSlotMid');
+        if (amountBlock && slot && amountBlock.parentElement !== slot) slot.appendChild(amountBlock);
+
         [['Expense', 'expense'], ['Bet', 'bet'], ['Cash', 'cash']].forEach(([suffix, m]) => {
             const on = (mode === m) ? 'block' : 'none';
             document.getElementById('what' + suffix).style.display = on;
@@ -1321,6 +1429,8 @@
         btn.innerText = mode === 'expense' ? 'Add Expense' : (mode === 'bet' ? 'Add Bet' : 'Add Cash Transfer');
 
         document.getElementById('expenseError').style.display = 'none';
+        renderBetGrid();
+        renderAmount();
     }
 
     // --- PLAYERS ---
@@ -1789,6 +1899,34 @@
         requestAnimationFrame(tick);
     }
 
+    // Split is multi-select: everyone is included by default, tap to drop someone.
+    let splitOff = {};        // name -> true when excluded
+
+    function renderSplitChips() {
+        const el = document.getElementById('splitChips');
+        if (!el) return;
+
+        Object.keys(splitOff).forEach(n => { if (!players.includes(n)) delete splitOff[n]; });
+
+        el.innerHTML = players.length === 0
+            ? '<span class="pick-empty">Add players above first</span>'
+            : players.map(p => `
+                <button type="button" class="splitchip" data-split="${esc(p)}"
+                        aria-pressed="${!splitOff[p]}">${esc(p)}</button>`).join('');
+    }
+
+    function splitSelection() {
+        return players.filter(p => !splitOff[p]);
+    }
+
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-split]');
+        if (!b) return;
+        const n = b.dataset.split;
+        if (splitOff[n]) delete splitOff[n]; else splitOff[n] = true;
+        renderSplitChips();
+    });
+
     function renderContacts() {
         const box = document.getElementById('contactsBox');
         const rows = document.getElementById('contactRows');
@@ -1819,6 +1957,7 @@
     });
 
     function updatePlayerUI() {
+        updateClearBtn();
         document.getElementById('playerList').innerHTML = players.map((p, i) => `
             <span class="player-tag">
                 ${esc(p)} <button type="button" class="delete-btn" onclick="removePlayer(${i})">✕</button>
@@ -1828,16 +1967,9 @@
         renderPickers();
 
         renderContacts();
+        renderBetGrid();
 
-        const checkGrid = document.getElementById('splitCheckboxes');
-        checkGrid.innerHTML = players.length === 0
-            ? '<div style="font-size: 12px; color: #888;">Add players above first</div>'
-            : players.map((p, i) => `
-                <div class="checkbox-item">
-                    <input type="checkbox" class="split-check" value="${esc(p)}" id="check_${i}" checked>
-                    <label for="check_${i}">${esc(p)}</label>
-                </div>
-            `).join('');
+        renderSplitChips();
     }
 
     // --- ENTRIES ---
@@ -1850,41 +1982,68 @@
             const desc = currentDesc() || 'Shared Expense';
             const payer = picks.payer;
             const amount = amountValue();
-            const checkboxes = document.querySelectorAll('.split-check:checked');
+            const chosen = splitSelection();
 
             if (!payer) return fail("Please select who paid.");
             if (isNaN(amount) || amount <= 0) return fail("Please enter a valid amount.");
-            if (checkboxes.length === 0) return fail("Select at least one person splitting.");
+            if (chosen.length === 0) return fail("Pick at least one person to split across.");
 
             expenses.push({
                 type: 'expense', description: desc, payer, amount,
-                splitWith: Array.from(checkboxes).map(cb => cb.value), id: nextId()
+                splitWith: chosen, id: nextId()
             });
 
             clearAmount();
             descChoice = '';
+            splitOff = {};          // next expense starts covering everyone again
+            renderSplitChips();
             syncPresets();
 
         } else if (currentMode === 'bet') {
-            const desc = document.getElementById('betDesc').value.trim() || 'Bet';
-            const winner = picks.betWinner;
-            const loser = picks.betLoser;
-            const amount = amountValue();
+            const desc = 'Bet';
+            let rows;
 
-            if (!winner && !loser) return fail("Pick a winner, a loser, or both.");
-            if (winner && loser && winner === loser) return fail("Winner and loser cannot be the same person.");
-            if (isNaN(amount) || amount <= 0) return fail("Please enter a valid bet amount.");
+            if (betMode === 'equal') {
+                const stake = amountValue();
+                const won = players.filter(n => (betRows[n] || {}).side === 'won');
+                const lost = players.filter(n => (betRows[n] || {}).side === 'lost');
 
-            // winner-only or loser-only entries are allowed; the bets must simply
-            // net to zero across the round for the settlement to balance.
-            expenses.push({
-                type: 'bet', description: desc, amount,
-                payer: winner || null, splitWith: loser ? [loser] : [],
-                winner: winner || null, loser: loser || null, id: nextId()
-            });
+                if (!won.length || !lost.length) return fail("Mark at least one player Won and one Lost.");
+                if (won.length !== lost.length) {
+                    return fail(`Equal stakes need equal numbers — ${won.length} won vs ${lost.length} lost.`);
+                }
+                if (isNaN(stake) || stake <= 0) return fail("Enter the stake.");
 
+                rows = won.map(n => ({ name: n, side: 'won', amt: stake }))
+                    .concat(lost.map(n => ({ name: n, side: 'lost', amt: stake })));
+
+            } else {
+                rows = players
+                    .map(n => ({ name: n, side: (betRows[n] || {}).side, amt: parseFloat((betRows[n] || {}).amt || '') }))
+                    .filter(r => r.side && r.amt > 0);
+
+                if (rows.length === 0) return fail("Mark at least one player Won or Lost and enter an amount.");
+
+                const net = rows.reduce((t, r) => t + (r.side === 'won' ? r.amt : -r.amt), 0);
+                if (Math.abs(net) >= EPS) {
+                    // fail() writes plain text, so don't use the HTML-formatted signed()
+                    return fail(`Wins and losses must cancel out — currently out by ${net > 0 ? '+' : '-'}${money(net)}.`);
+                }
+            }
+
+            rows.forEach(r => expenses.push({
+                type: 'bet', description: desc, amount: r.amt,
+                winner: r.side === 'won' ? r.name : null,
+                loser:  r.side === 'lost' ? r.name : null,
+                payer:  r.side === 'won' ? r.name : null,
+                splitWith: r.side === 'lost' ? [r.name] : [],
+                id: nextId()
+            }));
+
+            betRows = {};
             clearAmount();
-            document.getElementById('betDesc').value = '';
+            renderBetGrid();
+
 
         } else {
             const desc = document.getElementById('cashDesc').value.trim() || 'Cash Transfer';
@@ -1919,6 +2078,7 @@
     }
 
     function renderExpenses() {
+        updateClearBtn();
         const logSection = document.getElementById('expenseLogSection');
         const listDiv = document.getElementById('expenseList');
 
@@ -2589,27 +2749,68 @@
         });
     }
 
-    function resetAll() {
-        if ((players.length || expenses.length) &&
-            !confirm('Clear this round and start over?')) return;
+    // Clear works in two stages: the first press drops the entries and the
+    // settlement but keeps the line-up, so you can re-enter a round without
+    // retyping names. Pressing it again removes the players too.
+    function clearStage() {
+        if (expenses.length) return 'entries';
+        if (players.length) return 'players';
+        return 'empty';
+    }
 
-        players = [];
-        expenses = [];
-        last = { transactions: [], directDebts: [], cards: [], totalSpend: 0, avgSpend: 0 };
+    function updateClearBtn() {
+        const b = document.getElementById('clearBtn');
+        if (!b) return;
+        const st = clearStage();
+        b.textContent = st === 'entries' ? 'Clear entries'
+                      : st === 'players' ? 'Clear players'
+                      : 'Clear';
+        b.disabled = (st === 'empty');
+        b.style.opacity = (st === 'empty') ? 0.45 : 1;
+    }
 
-        ['playerName', 'expenseDesc', 'betDesc', 'cashDesc']
-            .forEach(id => document.getElementById(id).value = '');
+    function clearComposer() {
+        ['expenseDesc', 'cashDesc'].forEach(id => document.getElementById(id).value = '');
         descChoice = '';
         clearAmount();
+        Object.keys(picks).forEach(k => picks[k] = '');
+        betRows = {};
+        splitOff = {};
 
-        document.getElementById('playerError').style.display = 'none';
         document.getElementById('expenseError').style.display = 'none';
         document.getElementById('results').style.display = 'none';
         document.getElementById('graphicPreview').style.display = 'none';
 
-        Object.keys(picks).forEach(k => picks[k] = '');
+        last = { transactions: [], directDebts: [], cards: [], totalSpend: 0, avgSpend: 0 };
         syncPresets();
+    }
 
+    function resetAll() {
+        const st = clearStage();
+        if (st === 'empty') return;
+
+        if (st === 'entries') {
+            if (!confirm('Clear all entries and the settlement? The players stay.')) return;
+            expenses = [];
+            clearComposer();
+            renderPickers();
+            renderSplitChips();
+            renderBetGrid();
+            renderAmount();
+            renderExpenses();
+            save();
+            updateClearBtn();
+            return;
+        }
+
+        // second press: wipe the line-up too and start a fresh round
+        if (!confirm('Remove all players and start a new round?')) return;
+
+        players = [];
+        expenses = [];
+        clearComposer();
+        document.getElementById('playerName').value = '';
+        document.getElementById('playerError').style.display = 'none';
         document.getElementById('roundDate').value = todayISO();
 
         setMode('expense');
@@ -2617,18 +2818,51 @@
         renderExpenses();
 
         try { localStorage.removeItem(STORE); } catch (e) {}
+        updateClearBtn();
     }
 
     loadContacts();
     document.getElementById('roundDate').value = todayISO();
     setMode('expense');
 
-    document.getElementById('keypad').addEventListener('click', e => {
-        const b = e.target.closest('.key');
-        if (b) pressKey(b.dataset.k);
+    // keep the shared amount field to digits, and refresh the bet tally as you type
+    document.getElementById('amountInput').addEventListener('input', e => {
+        const clean = digitsOnly(e.target.value);
+        if (e.target.value !== clean) e.target.value = clean;
+        if (currentMode === 'bet') updateBetSum();
     });
 
-    document.getElementById('amountClear').addEventListener('click', clearAmount);
+    // per-row amounts in Different mode: update state without re-rendering the row,
+    // which would otherwise steal focus mid-keystroke
+    document.addEventListener('input', e => {
+        const el = e.target.closest('[data-betamt]');
+        if (!el) return;
+        const clean = digitsOnly(el.value);
+        if (el.value !== clean) el.value = clean;
+        betRow(el.dataset.betamt).amt = clean;
+        updateBetSum();
+    });
+
+    document.addEventListener('click', e => {
+        const modeBtn = e.target.closest('[data-betmode]');
+        if (modeBtn) {
+            betMode = modeBtn.dataset.betmode;
+            document.querySelectorAll('[data-betmode]').forEach(b =>
+                b.setAttribute('aria-pressed', String(b.dataset.betmode === betMode)));
+            clearAmount();
+            players.forEach(n => { if (betRows[n]) betRows[n].amt = ''; });   // amounts don't carry across modes
+            renderAmount();
+            renderBetGrid();
+            return;
+        }
+
+        const side = e.target.closest('[data-betside]');
+        if (side) {
+            const r = betRow(side.dataset.betside);
+            r.side = (r.side === side.dataset.side) ? '' : side.dataset.side;
+            renderBetGrid();
+        }
+    });
 
     document.getElementById('helpOverlay').addEventListener('click', e => {
         if (e.target.id === 'helpOverlay') closeHelp();      // tap the backdrop
@@ -2638,12 +2872,13 @@
         if (e.key === 'Escape') { closeHelp(); closeScanner(); }
     });
 
-    // a real keyboard still works on desktop
+    // Enter files the entry from any amount field
     document.addEventListener('keydown', e => {
-        if (/^(INPUT|TEXTAREA)$/.test((e.target.tagName || ''))) return;
-        if (/^[0-9]$/.test(e.key)) pressKey(e.key);
-        else if (e.key === 'Backspace') { e.preventDefault(); pressKey('del'); }
-        else if (e.key === 'Enter') addTransaction();
+        if (e.key !== 'Enter') return;
+        if (e.target.id === 'amountInput' || e.target.closest('[data-betamt]')) {
+            e.preventDefault();
+            addTransaction();
+        }
     });
 
     renderAmount();
