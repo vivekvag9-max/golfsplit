@@ -46,10 +46,48 @@
 
         h1 {
             color: var(--green);
-            margin: 0 0 12px 0;
+            margin: 0 0 8px 0;
             font-size: 1.35rem;
             white-space: nowrap;
         }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .date-wrap {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 12px; font-weight: 700; color: #555;
+            flex: 1; min-width: 0;
+        }
+
+        .date-wrap input {
+            flex: 1; min-width: 0;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            background: white;
+            color: var(--ink);
+        }
+
+        .btn-clear-top {
+            flex: 0 0 auto;
+            background: transparent;
+            color: #888;
+            border: 1px solid #ddd;
+            padding: 7px 11px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn-clear-top:active { background: #f5f5f5; }
 
         .section {
             margin-bottom: 14px;
@@ -477,6 +515,13 @@
 
 <div class="container">
     <h1>⛳ Golf Settler</h1>
+    <div class="top-bar">
+        <label class="date-wrap">
+            <span>Date</span>
+            <input type="date" id="roundDate" onchange="onDateChange()">
+        </label>
+        <button type="button" class="btn-clear-top" onclick="resetAll()">Clear &amp; start over</button>
+    </div>
 
     <!-- Step 1: Players -->
     <div class="section">
@@ -643,7 +688,7 @@
         </div>
     </div>
 
-    <button type="button" class="btn-reset" onclick="resetAll()">Clear & Start Over</button>
+
 </div>
 
 <canvas id="exportCanvas" style="display:none;"></canvas>
@@ -757,7 +802,8 @@
     function save() {
         try {
             localStorage.setItem(STORE, JSON.stringify({
-                players, expenses, cur: currencySymbol, seq: idCounter
+                players, expenses, cur: currencySymbol, seq: idCounter,
+                date: document.getElementById('roundDate').value
             }));
         } catch (e) { /* private mode / quota — carry on unsaved */ }
     }
@@ -770,6 +816,7 @@
         players = saved.players;
         expenses = saved.expenses;
         idCounter = saved.seq || expenses.reduce((m, e) => Math.max(m, e.id || 0), 0);
+        if (saved.date) document.getElementById('roundDate').value = saved.date;
 
         renderAmount();
         updatePlayerUI();
@@ -807,6 +854,30 @@
 
     function esc(s) {
         return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // ---- round date ----
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function todayISO() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    // "01-Aug-26", matching how the round is written on paper
+    function dateLabel() {
+        const v = document.getElementById('roundDate').value;
+        if (!v) return '';
+        const [y, m, d] = v.split('-').map(Number);
+        if (!y || !m || !d) return '';
+        return `${String(d).padStart(2, '0')}-${MONTHS[m - 1]}-${String(y).slice(2)}`;
+    }
+
+    function onDateChange() {
+        const el = document.getElementById('roundDate');
+        if (!el.value) el.value = todayISO();   // never leave it blank
+        save();
     }
 
     // Accounting format for grid cells: no symbol, brackets for money out.
@@ -1329,7 +1400,10 @@
     function shareWhatsApp() {
         if (last.cards.length === 0) return;
 
-        let msg = "⛳ *Golf Round Settlement*\n\n";
+        const dLabel = dateLabel();
+        let msg = "⛳ *Golf Round Settlement*\n";
+        if (dLabel) msg += `📅 ${dLabel}\n`;
+        msg += "\n";
 
         if (last.transactions.length === 0) {
             msg += "✅ *All square* — nobody owes anybody.\n\n";
@@ -1401,6 +1475,14 @@
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 24px -apple-system, sans-serif';
         ctx.fillText('⛳ GOLF ROUND SETTLEMENT', 30, 44);
+
+        const dLabel = dateLabel();
+        if (dLabel) {
+            ctx.font = 'bold 15px -apple-system, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(dLabel, W - 30, 44);
+            ctx.textAlign = 'left';
+        }
 
         ctx.font = '15px -apple-system, sans-serif';
         const headline = last.transactions.length === 0
@@ -1615,6 +1697,9 @@
     }
 
     function resetAll() {
+        if ((players.length || expenses.length) &&
+            !confirm('Clear this round and start over?')) return;
+
         players = [];
         expenses = [];
         last = { transactions: [], directDebts: [], cards: [], totalSpend: 0, avgSpend: 0 };
@@ -1632,6 +1717,8 @@
         Object.keys(picks).forEach(k => picks[k] = '');
         syncPresets();
 
+        document.getElementById('roundDate').value = todayISO();
+
         setMode('expense');
         updatePlayerUI();
         renderExpenses();
@@ -1639,6 +1726,7 @@
         try { localStorage.removeItem(STORE); } catch (e) {}
     }
 
+    document.getElementById('roundDate').value = todayISO();
     setMode('expense');
 
     document.getElementById('keypad').addEventListener('click', e => {
