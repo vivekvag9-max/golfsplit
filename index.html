@@ -229,6 +229,16 @@
 
         .pick-empty { font-size: 12px; color: #888; }
 
+        .pick-hint {
+            font-size: 11.5px;
+            color: var(--muted);
+            line-height: 1.45;
+            margin: -6px 0 12px 0;
+        }
+
+        .pick-hint b { color: var(--pick-teal); }
+        .pick-hint .out { color: var(--muted); text-decoration: line-through; }
+
         /* ---------- Paytm / UPI contacts ---------- */
         .contacts-box {
             margin-top: 10px;
@@ -820,9 +830,6 @@
         <div>
             <!-- what it was for -->
             <div id="whatExpense">
-                <div class="pick-label">Paid by</div>
-                <div class="pick-row" id="payerPick"></div>
-
                 <div class="pick-label">For</div>
                 <div class="pick-row" id="typePick">
                     <button type="button" class="preset" data-desc="Booking" aria-pressed="false">Booking</button>
@@ -833,10 +840,14 @@
                     <input type="text" id="expenseDesc" class="preset-input" placeholder="Type it…" autocomplete="off" style="display: none;">
                 </div>
 
+                <div class="pick-label">Paid by</div>
+                <div class="pick-row" id="payerPick"></div>
+
                 <div id="amountSlotExpense"></div>
 
                 <div class="pick-label">Split across</div>
                 <div class="pick-row" id="splitChips"></div>
+                <div class="pick-hint" id="splitHint"></div>
             </div>
 
             <div id="whatBet" style="display: none;">
@@ -955,6 +966,8 @@
         <button type="button" class="btn-graphic" onclick="generateGraphic()">🖼️ Generate Summary Image Card</button>
 
         <div id="graphicPreview">
+            <button type="button" class="btn-whatsapp" id="shareImgBtn" onclick="shareImage()">💬 Share image on WhatsApp</button>
+            <div class="note" id="shareImgNote" style="display:none;"></div>
             <p style="font-size: 12px; color: #555; margin-bottom: 5px;">Right-click or long-press image to save:</p>
             <img id="generatedImage" alt="Summary Graphic">
         </div>
@@ -1329,7 +1342,7 @@
     };
 
     const MODE_HINTS = {
-        expense: "Enter the amount, who paid, what for, then tap anyone who should be left out of the split.",
+        expense: "Pick what it was for and who paid, enter the amount, then tap anyone who should be left out of the split.",
         bet: "Mark who won and who lost. Equal — one stake for everyone, so the sides must be even in number. Different — set each amount, and they must cancel out.",
         cash: "Money that has already physically changed hands — settling up early, or covering someone at the counter. It reduces what the giver owes."
     };
@@ -1962,10 +1975,37 @@
             : players.map(p => `
                 <button type="button" class="splitchip" data-split="${esc(p)}"
                         aria-pressed="${!splitOff[p]}">${esc(p)}</button>`).join('');
+
+        updateSplitHint();
     }
 
     function splitSelection() {
         return players.filter(p => !splitOff[p]);
+    }
+
+    // With everyone selected the row is a wall of purple, so spell out what that
+    // means and how the cost divides.
+    function updateSplitHint() {
+        const el = document.getElementById('splitHint');
+        if (!el) return;
+
+        if (players.length === 0) { el.innerHTML = ''; return; }
+
+        const inc = splitSelection();
+        const out = players.filter(p => splitOff[p]);
+        const amt = amountValue();
+
+        let txt = `<b>Purple</b> = sharing this cost. Tap a name to leave them out.`;
+
+        if (inc.length) {
+            txt += `<br>Splitting <b>${inc.length} way${inc.length > 1 ? 's' : ''}</b>`;
+            if (!isNaN(amt) && amt > 0) txt += ` · <b>${money(amt / inc.length)}</b> each`;
+            if (out.length) txt += ` — <span class="out">${out.map(esc).join(', ')}</span> left out`;
+        } else {
+            txt += `<br>Nobody selected — tap at least one name.`;
+        }
+
+        el.innerHTML = txt;
     }
 
     document.addEventListener('click', e => {
@@ -2028,14 +2068,17 @@
         const fail = msg => { errDiv.innerText = msg; errDiv.style.display = 'block'; };
 
         if (currentMode === 'expense') {
-            const desc = currentDesc() || 'Shared Expense';
             const payer = picks.payer;
             const amount = amountValue();
             const chosen = splitSelection();
 
+            // validate in the order the fields are laid out
+            if (!descChoice) return fail("Pick what the expense was for.");
             if (!payer) return fail("Please select who paid.");
             if (isNaN(amount) || amount <= 0) return fail("Please enter a valid amount.");
             if (chosen.length === 0) return fail("Pick at least one person to split across.");
+
+            const desc = currentDesc();
 
             expenses.push({
                 type: 'expense', description: desc, payer, amount,
@@ -2543,7 +2586,7 @@
             return link ? { link, side: qrSide(link, QR_BOX) } : null;
         });
         const anyQR = payQR.some(Boolean);
-        const rowH = payQR.map(q => q && q.side ? Math.max(120, q.side + 46) : 46);
+        const rowH = payQR.map(q => q && q.side ? Math.max(126, q.side + 52) : 56);
         const planH = 46
             + (last.transactions.length ? rowH.reduce((a, b) => a + b, 0) : 46)
             + (anyQR ? 24 : 0);
@@ -2607,15 +2650,15 @@
                 const h = rowH[i];
 
                 ctx.fillStyle = '#e8f5e9';
-                ctx.fillRect(30, y - 21, W - 60, h - 8);
+                ctx.fillRect(30, y - 21, W - 60, h - 10);
 
                 ctx.fillStyle = '#2e7d32';
                 ctx.font = 'bold 16px -apple-system, sans-serif';
                 ctx.fillText(`${t.from}  ➔  ${t.to}`, 45, y + 4);
 
                 if (q && q.side) {
-                    ctx.font = 'bold 21px -apple-system, sans-serif';
-                    ctx.fillText(money(t.amount), 45, y + 36);
+                    ctx.font = 'bold 30px -apple-system, sans-serif';
+                    ctx.fillText(money(t.amount), 45, y + 42);
 
                     const qx = W - 45 - q.side;
                     drawQR(ctx, q.link, qx, y - 12, QR_BOX);
@@ -2627,7 +2670,8 @@
                     ctx.textAlign = 'left';
                 } else {
                     ctx.textAlign = 'right';
-                    ctx.fillText(money(t.amount), W - 45, y + 4);
+                    ctx.font = 'bold 24px -apple-system, sans-serif';
+                    ctx.fillText(money(t.amount), W - 45, y + 8);
                     ctx.textAlign = 'left';
                 }
 
@@ -2800,22 +2844,55 @@
             ctx.strokeStyle = '#e0e0e0';
         });
 
+        lastImageBlob = null;
         document.getElementById('generatedImage').src = canvas.toDataURL('image/png');
 
         const previewDiv = document.getElementById('graphicPreview');
         previewDiv.style.display = 'block';
         previewDiv.scrollIntoView({ behavior: 'smooth' });
 
-        canvas.toBlob(blob => {
-            const file = new File([blob], 'golf-settlement.png', { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({
+        // Keep the PNG ready so sharing is a deliberate tap, not an automatic
+        // share sheet the moment the card is drawn.
+        canvas.toBlob(blob => { lastImageBlob = blob; });
+    }
+
+    let lastImageBlob = null;
+
+    // An image can only reach WhatsApp through the OS share sheet — a wa.me link
+    // carries text only. Where that isn't available, fall back to a download.
+    async function shareImage() {
+        const note = document.getElementById('shareImgNote');
+        note.style.display = 'none';
+
+        const canvas = document.getElementById('exportCanvas');
+        const blob = lastImageBlob || await new Promise(r => canvas.toBlob(r));
+        if (!blob) return;
+
+        const file = new File([blob], `golf-${dateLabel() || 'round'}.png`, { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
                     files: [file],
-                    title: 'Golf Settlement',
-                    text: 'Here is our golf expense settlement card!'
-                }).catch(() => {});
+                    title: 'Golf round settlement',
+                    text: `Golf settlement${dateLabel() ? ' — ' + dateLabel() : ''}`
+                });
+                return;
+            } catch (e) {
+                if (e && e.name === 'AbortError') return;   // user dismissed the sheet
             }
-        });
+        }
+
+        // desktop, or a browser without file sharing
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+
+        note.style.display = 'block';
+        note.innerHTML = 'Image saved. Sharing straight to WhatsApp only works from a phone — '
+                       + 'on a computer, attach the downloaded file yourself.';
     }
 
     // Clear works in two stages: the first press drops the entries and the
@@ -2899,6 +2976,7 @@
         const clean = digitsOnly(e.target.value);
         if (e.target.value !== clean) e.target.value = clean;
         if (currentMode === 'bet') updateBetSum();
+        else if (currentMode === 'expense') updateSplitHint();
     });
 
     // per-row amounts in Different mode: update state without re-rendering the row,
